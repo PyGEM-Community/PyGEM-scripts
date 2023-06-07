@@ -1,0 +1,77 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH -p rounce
+#SBATCH -t 0:30:00
+#SBATCH --ntasks-per-node=128
+#SBATCH --mem-per-cpu=16000MB
+
+echo $SLURM_TASKS_PER_NODE
+
+STARTNO="1"
+ENDNO="1000"
+
+# region
+REGNO="1"
+STARTYR="2000"
+ENDYR="2100"
+MERGE_SWITCH=0
+ORDERED_SWITCH=0
+
+# GCM list
+#GCM_NAMES_LST="CanESM2 CCSM4 CNRM-CM5 CSIRO-Mk3-6-0 GFDL-CM3 GFDL-ESM2M GISS-E2-R IPSL-CM5A-LR MPI-ESM-LR NorESM1-M"
+#GCM_NAMES_LST="BCC-CSM2-MR CESM2 CESM2-WACCM EC-Earth3 EC-Earth3-Veg FGOALS-f3-L GFDL-ESM4 INM-CM4-8 INM-CM5-0 MPI-ESM1-2-HR MRI-ESM2-0 NorESM2-MM"
+#GCM_NAMES_LST="EC-Earth3 EC-Earth3-Veg GFDL-ESM4 MRI-ESM2-0"
+GCM_NAMES_LST="BCC-CSM2-MR"
+
+# Scenarios list
+#SCENARIOS="rcp26 rcp45 rcp85"
+#SCENARIOS="ssp126 ssp245 ssp370 ssp585"
+#SCENARIOS="ssp119"
+SCENARIOS="ssp126"
+
+# activate environment
+module load aocc/3.2.0
+module load anaconda3/2021.05
+source activate /trace/home/drounce/.conda/envs/pygem_env/envs/oggm_env
+
+
+# split glaciers into batches for different nodes
+python spc_split_glaciers.py -n_batches=$SLURM_JOB_NUM_NODES -option_ordered=$ORDERED_SWITCH -startno=$STARTNO -endno=$ENDNO -regno=$REGNO
+
+# list rgi_glac_number batch filenames
+CHECK_STR="R${REGNO}_rgi_glac_number_${STARTNO}-${ENDNO}glac_batch"
+rgi_fns=$(find $CHECK_STR*)
+#echo rgi_glac_number filenames:$rgi_fns
+# create list
+list_rgi_fns=($rgi_fns)
+echo first_batch:${list_rgi_fns[0]}
+
+echo partition: $SLURM_JOB_PARTITION
+echo num_nodes: $SLURM_JOB_NUM_NODES nodes: $SLURM_JOB_NODELIST
+echo num_tasks: $SLURM_NTASKS
+
+
+#cd $SLURM_SUBMIT_DIR
+# Generate a list of allocated nodes
+#NODELIST=`srun -l /bin/hostname | awk '{print $2}' | sort -u`
+#echo $NODELIST
+
+
+for GCM_NAME in $GCM_NAMES_LST; do
+  GCM_NAME_NOSPACE="$(echo -e "${GCM_NAME}" | tr -d '[:space:]')"
+  echo -e "\n$GCM_NAME"
+  
+  for SCENARIO in $SCENARIOS; do
+    echo "$SCENARIO"
+
+
+      #srun --exclusive -N1 -n1 python run_simulation_woggm.py -gcm_startyear=$STARTYR -gcm_endyear=$ENDYR -gcm_name="$GCM_NAME_NOSPACE" -scenario="$SCENARIO" -num_simultaneous_processes=24 -rgi_glac_number_fn=$rgi_fn -option_ordered=$ORDERED_SWITCH &
+    srun --exclusive -N1 -n1 python run_simulation_woggm.py -gcm_startyear=$STARTYR -gcm_endyear=$ENDYR -gcm_name="$GCM_NAME_NOSPACE" -scenario="$SCENARIO" -num_simultaneous_processes=$SLURM_NTASKS -rgi_glac_number_fn=${list_rgi_fns[0]} -option_ordered=$ORDERED_SWITCH &
+  
+  done
+  wait
+  
+done
+wait
+
+echo -e "\nScript finished"
