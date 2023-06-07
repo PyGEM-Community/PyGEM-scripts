@@ -22,23 +22,26 @@ from scipy.stats import median_abs_deviation
 import xarray as xr
 
 # Local libraries
-import class_climate
 import pygem.pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
+from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance
 from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.oggm_compat import single_flowline_glacier_directory
 from pygem.oggm_compat import single_flowline_glacier_directory_with_calving
 from pygem.shop import debris 
-import pygemfxns_gcmbiasadj as gcmbiasadj
-import spc_split_glaciers as split_glaciers
+from pygem import gcmbiasadj
 
+import oggm
+oggm_version = np.float(oggm.__version__[0:3])
 from oggm import cfg
 from oggm import graphics
 from oggm import tasks
 from oggm import utils
-from oggm.core import climate
-from oggm.core.massbalance import apparent_mb_from_any_mb
+if oggm_version > 1.301:
+    from oggm.core.massbalance import apparent_mb_from_any_mb # Newer Version of OGGM
+else:
+    from oggm.core.climate import apparent_mb_from_any_mb # Older Version of OGGM
 from oggm.core.flowline import FluxBasedModel
 from oggm.core.inversion import find_inversion_calving_from_any_mb
 
@@ -1377,8 +1380,10 @@ def main(list_packed_vars):
                             plt.show()
 
                         try:
-#                            _, diag = ev_model.run_until_and_store(nyears)
-                            diag = ev_model.run_until_and_store(nyears)
+                            if oggm_version > 1.301:
+                                diag = ev_model.run_until_and_store(nyears)
+                            else:
+                                _, diag = ev_model.run_until_and_store(nyears)
                             ev_model.mb_model.glac_wide_volume_annual[-1] = diag.volume_m3[-1]
                             ev_model.mb_model.glac_wide_area_annual[-1] = diag.area_m2[-1]
                             
@@ -1431,8 +1436,10 @@ def main(list_packed_vars):
                                                 is_tidewater=gdir.is_tidewater,
                                                 water_level=water_level
                                                 )
-#                                _, diag = ev_model.run_until_and_store(nyears)
-                                diag = ev_model.run_until_and_store(nyears)
+                                if oggm_version > 1.301:
+                                    diag = ev_model.run_until_and_store(nyears)
+                                else:
+                                    _, diag = ev_model.run_until_and_store(nyears)
                                 ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                                 ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
                 
@@ -1460,8 +1467,10 @@ def main(list_packed_vars):
                                                 is_tidewater=gdir.is_tidewater,
                                                 water_level=water_level
                                                 )
-                                diag = ev_model.run_until_and_store(nyears)
-#                                _, diag = ev_model.run_until_and_store(nyears)
+                                if oggm_version > 1.301:
+                                    diag = ev_model.run_until_and_store(nyears)
+                                else:
+                                    _, diag = ev_model.run_until_and_store(nyears)
                                 ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                                 ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
                 
@@ -1498,8 +1507,10 @@ def main(list_packed_vars):
                             graphics.plot_modeloutput_section(ev_model)
                            
                         try:
-#                            _, diag = ev_model.run_until_and_store(nyears)
-                            diag = ev_model.run_until_and_store(nyears)
+                            if oggm_version > 1.301:
+                                diag = ev_model.run_until_and_store(nyears)
+                            else:
+                                _, diag = ev_model.run_until_and_store(nyears)
 #                            print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
                             ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                             ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
@@ -1887,7 +1898,7 @@ if __name__ == '__main__':
     time_start = time.time()
     parser = getparser()
     args = parser.parse_args()
-
+    
     if args.debug == 1:
         debug = True
     else:
@@ -1916,7 +1927,7 @@ if __name__ == '__main__':
         num_cores = 1
 
     # Glacier number lists to pass for parallel processing
-    glac_no_lsts = split_glaciers.split_list(glac_no, n=num_cores, option_ordered=args.option_ordered)
+    glac_no_lsts = modelsetup.split_list(glac_no, n=num_cores, option_ordered=args.option_ordered)
 
     # Read GCM names from argument parser
     gcm_name = args.gcm_list_fn
@@ -1931,6 +1942,8 @@ if __name__ == '__main__':
             gcm_list = gcm_fn.read().splitlines()
             scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
             print('Found %d gcms to process'%(len(gcm_list)))
+
+    
 
     # Loop through all GCMs
     for gcm_name in gcm_list:
@@ -1959,39 +1972,39 @@ if __name__ == '__main__':
     print('Total processing time:', time.time()-time_start, 's')
 
 
-#%% ===== PLOTTING AND PROCESSING FOR MODEL DEVELOPMENT =====
-    # Place local variables in variable explorer
-    if args.option_parallels == 0:
-        main_vars_list = list(main_vars.keys())
-        gcm_name = main_vars['gcm_name']
-        main_glac_rgi = main_vars['main_glac_rgi']
-        if pygem_prms.hyps_data in ['Huss', 'Farinotti']:
-            main_glac_hyps = main_vars['main_glac_hyps']
-            main_glac_icethickness = main_vars['main_glac_icethickness']
-            main_glac_width = main_vars['main_glac_width']
-        dates_table = main_vars['dates_table']
-        gcm_temp = main_vars['gcm_temp']
-        gcm_tempstd = main_vars['gcm_tempstd']
-        gcm_prec = main_vars['gcm_prec']
-        gcm_elev = main_vars['gcm_elev']
-        gcm_lr = main_vars['gcm_lr']
-        gcm_temp_adj = main_vars['gcm_temp_adj']
-        gcm_prec_adj = main_vars['gcm_prec_adj']
-        gcm_elev_adj = main_vars['gcm_elev_adj']
-        gcm_temp_lrglac = main_vars['gcm_lr']
-        ds_stats = main_vars['output_ds_all_stats']
-#        output_ds_essential_sims = main_vars['output_ds_essential_sims']
-        ds_binned = main_vars['output_ds_binned_stats']
-#        modelprms = main_vars['modelprms']
-        glacier_rgi_table = main_vars['glacier_rgi_table']
-        glacier_str = main_vars['glacier_str']
-        if pygem_prms.hyps_data in ['OGGM']:
-            gdir = main_vars['gdir']
-            fls = main_vars['fls']
-            width_initial = fls[0].widths_m
-            glacier_area_initial = width_initial * fls[0].dx
-            mbmod = main_vars['mbmod']
-            ev_model = main_vars['ev_model']
-            diag = main_vars['diag']
-            if pygem_prms.use_calibrated_modelparams:
-                modelprms_dict = main_vars['modelprms_dict']
+##%% ===== PLOTTING AND PROCESSING FOR MODEL DEVELOPMENT =====
+#    # Place local variables in variable explorer
+#    if args.option_parallels == 0:
+#        main_vars_list = list(main_vars.keys())
+#        gcm_name = main_vars['gcm_name']
+#        main_glac_rgi = main_vars['main_glac_rgi']
+#        if pygem_prms.hyps_data in ['Huss', 'Farinotti']:
+#            main_glac_hyps = main_vars['main_glac_hyps']
+#            main_glac_icethickness = main_vars['main_glac_icethickness']
+#            main_glac_width = main_vars['main_glac_width']
+#        dates_table = main_vars['dates_table']
+#        gcm_temp = main_vars['gcm_temp']
+#        gcm_tempstd = main_vars['gcm_tempstd']
+#        gcm_prec = main_vars['gcm_prec']
+#        gcm_elev = main_vars['gcm_elev']
+#        gcm_lr = main_vars['gcm_lr']
+#        gcm_temp_adj = main_vars['gcm_temp_adj']
+#        gcm_prec_adj = main_vars['gcm_prec_adj']
+#        gcm_elev_adj = main_vars['gcm_elev_adj']
+#        gcm_temp_lrglac = main_vars['gcm_lr']
+#        ds_stats = main_vars['output_ds_all_stats']
+##        output_ds_essential_sims = main_vars['output_ds_essential_sims']
+#        ds_binned = main_vars['output_ds_binned_stats']
+##        modelprms = main_vars['modelprms']
+#        glacier_rgi_table = main_vars['glacier_rgi_table']
+#        glacier_str = main_vars['glacier_str']
+#        if pygem_prms.hyps_data in ['OGGM']:
+#            gdir = main_vars['gdir']
+#            fls = main_vars['fls']
+#            width_initial = fls[0].widths_m
+#            glacier_area_initial = width_initial * fls[0].dx
+#            mbmod = main_vars['mbmod']
+#            ev_model = main_vars['ev_model']
+#            diag = main_vars['diag']
+#            if pygem_prms.use_calibrated_modelparams:
+#                modelprms_dict = main_vars['modelprms_dict']
