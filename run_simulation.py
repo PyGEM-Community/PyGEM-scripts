@@ -22,15 +22,16 @@ from scipy.stats import median_abs_deviation
 import xarray as xr
 
 # Local libraries
-import pygem.pygem_input as pygem_prms
+import pygem.gcmbiasadj as gcmbiasadj
+import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
-from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance
 from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.oggm_compat import single_flowline_glacier_directory
 from pygem.oggm_compat import single_flowline_glacier_directory_with_calving
 from pygem.shop import debris 
-from pygem import gcmbiasadj
+from pygem import class_climate
+
 
 import oggm
 oggm_version = np.float(oggm.__version__[0:3])
@@ -1035,18 +1036,26 @@ def main(list_packed_vars):
         if pygem_prms.option_bias_adjustment == 1:
             # Temperature bias correction
             gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_HH2015(ref_temp, ref_elev, gcm_temp,
-                                                                        dates_table_ref, dates_table)
+                                                                        dates_table_ref, dates_table,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_opt1(ref_prec, ref_elev, gcm_prec,
-                                                                      dates_table_ref, dates_table)
+                                                                      dates_table_ref, dates_table,
+                                                                      ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                      gcm_spinupyears=pygem_prms.gcm_spinupyears)
         # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
         elif pygem_prms.option_bias_adjustment == 2:
             # Temperature bias correction
             gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_HH2015(ref_temp, ref_elev, gcm_temp,
-                                                                        dates_table_ref, dates_table)
+                                                                        dates_table_ref, dates_table,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_HH2015(ref_prec, ref_elev, gcm_prec,
-                                                                        dates_table_ref, dates_table)
+                                                                        dates_table_ref, dates_table,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
             
     # ===== RUN MASS BALANCE =====
     # Number of simulations
@@ -1434,7 +1443,8 @@ def main(list_packed_vars):
                                                 nfls, mb_model=mbmod, y0=0,
                                                 glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs,
                                                 is_tidewater=gdir.is_tidewater,
-                                                water_level=water_level
+                                                water_level=water_level,
+                                                spinupyears=pygem_prms.ref_spinupyears
                                                 )
                                 if oggm_version > 1.301:
                                     diag = ev_model.run_until_and_store(nyears)
@@ -1955,7 +1965,7 @@ if __name__ == '__main__':
         list_packed_vars = []
         for count, glac_no_lst in enumerate(glac_no_lsts):
             list_packed_vars.append([count, glac_no_lst, gcm_name])
-            
+           
         # Parallel processing
         if args.option_parallels != 0:
             print('Processing in parallel with ' + str(args.num_simultaneous_processes) + ' cores...')
@@ -1968,43 +1978,42 @@ if __name__ == '__main__':
                 main(list_packed_vars[n])
 
 
-
     print('Total processing time:', time.time()-time_start, 's')
 
 
-##%% ===== PLOTTING AND PROCESSING FOR MODEL DEVELOPMENT =====
-#    # Place local variables in variable explorer
-#    if args.option_parallels == 0:
-#        main_vars_list = list(main_vars.keys())
-#        gcm_name = main_vars['gcm_name']
-#        main_glac_rgi = main_vars['main_glac_rgi']
-#        if pygem_prms.hyps_data in ['Huss', 'Farinotti']:
-#            main_glac_hyps = main_vars['main_glac_hyps']
-#            main_glac_icethickness = main_vars['main_glac_icethickness']
-#            main_glac_width = main_vars['main_glac_width']
-#        dates_table = main_vars['dates_table']
-#        gcm_temp = main_vars['gcm_temp']
-#        gcm_tempstd = main_vars['gcm_tempstd']
-#        gcm_prec = main_vars['gcm_prec']
-#        gcm_elev = main_vars['gcm_elev']
-#        gcm_lr = main_vars['gcm_lr']
-#        gcm_temp_adj = main_vars['gcm_temp_adj']
-#        gcm_prec_adj = main_vars['gcm_prec_adj']
-#        gcm_elev_adj = main_vars['gcm_elev_adj']
-#        gcm_temp_lrglac = main_vars['gcm_lr']
-#        ds_stats = main_vars['output_ds_all_stats']
-##        output_ds_essential_sims = main_vars['output_ds_essential_sims']
-#        ds_binned = main_vars['output_ds_binned_stats']
-##        modelprms = main_vars['modelprms']
-#        glacier_rgi_table = main_vars['glacier_rgi_table']
-#        glacier_str = main_vars['glacier_str']
-#        if pygem_prms.hyps_data in ['OGGM']:
-#            gdir = main_vars['gdir']
-#            fls = main_vars['fls']
-#            width_initial = fls[0].widths_m
-#            glacier_area_initial = width_initial * fls[0].dx
-#            mbmod = main_vars['mbmod']
-#            ev_model = main_vars['ev_model']
-#            diag = main_vars['diag']
-#            if pygem_prms.use_calibrated_modelparams:
-#                modelprms_dict = main_vars['modelprms_dict']
+# ##%% ===== PLOTTING AND PROCESSING FOR MODEL DEVELOPMENT =====
+# #    # Place local variables in variable explorer
+# #    if args.option_parallels == 0:
+# #        main_vars_list = list(main_vars.keys())
+# #        gcm_name = main_vars['gcm_name']
+# #        main_glac_rgi = main_vars['main_glac_rgi']
+# #        if pygem_prms.hyps_data in ['Huss', 'Farinotti']:
+# #            main_glac_hyps = main_vars['main_glac_hyps']
+# #            main_glac_icethickness = main_vars['main_glac_icethickness']
+# #            main_glac_width = main_vars['main_glac_width']
+# #        dates_table = main_vars['dates_table']
+# #        gcm_temp = main_vars['gcm_temp']
+# #        gcm_tempstd = main_vars['gcm_tempstd']
+# #        gcm_prec = main_vars['gcm_prec']
+# #        gcm_elev = main_vars['gcm_elev']
+# #        gcm_lr = main_vars['gcm_lr']
+# #        gcm_temp_adj = main_vars['gcm_temp_adj']
+# #        gcm_prec_adj = main_vars['gcm_prec_adj']
+# #        gcm_elev_adj = main_vars['gcm_elev_adj']
+# #        gcm_temp_lrglac = main_vars['gcm_lr']
+# #        ds_stats = main_vars['output_ds_all_stats']
+# ##        output_ds_essential_sims = main_vars['output_ds_essential_sims']
+# #        ds_binned = main_vars['output_ds_binned_stats']
+# ##        modelprms = main_vars['modelprms']
+# #        glacier_rgi_table = main_vars['glacier_rgi_table']
+# #        glacier_str = main_vars['glacier_str']
+# #        if pygem_prms.hyps_data in ['OGGM']:
+# #            gdir = main_vars['gdir']
+# #            fls = main_vars['fls']
+# #            width_initial = fls[0].widths_m
+# #            glacier_area_initial = width_initial * fls[0].dx
+# #            mbmod = main_vars['mbmod']
+# #            ev_model = main_vars['ev_model']
+# #            diag = main_vars['diag']
+# #            if pygem_prms.use_calibrated_modelparams:
+# #                modelprms_dict = main_vars['modelprms_dict']

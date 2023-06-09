@@ -15,13 +15,13 @@ from scipy.stats import linregress
 import xarray as xr
 
 # Local libraries
-import class_climate
-import pygem.pygem_input as pygem_prms
+import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
 from pygem.massbalance import PyGEMMassBalance
 from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.oggm_compat import single_flowline_glacier_directory_with_calving
 from pygem.shop import debris 
+from pygem import class_climate
 
 from oggm import utils, cfg
 from oggm import tasks

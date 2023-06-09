@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-import pygem.pygem_input as pygem_prms
+import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
 
 

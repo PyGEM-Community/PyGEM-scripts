@@ -1,14 +1,8 @@
-"""Run a model simulation."""
-# Default climate data is ERA-Interim; specify CMIP5 by specifying a filename to the argument:
-#    (Command line) python run_simulation_list_multiprocess.py -gcm_list_fn=C:\...\gcm_rcpXX_filenames.txt
-#      - Default is running ERA-Interim in parallel with five processors.
-#    (Spyder) %run run_simulation_list_multiprocess.py C:\...\gcm_rcpXX_filenames.txt -option_parallels=0
-#      - Spyder cannot run parallels, so always set -option_parallels=0 when testing in Spyder.
-# Spyder cannot run parallels, so always set -option_parallels=0 when testing in Spyder.
+"""Run model calibration."""
 
 # Built-in libraries
 import argparse
-import collections
+#import collections
 import inspect
 import multiprocessing
 import os
@@ -22,32 +16,26 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
 from scipy import stats
-import xarray as xr
-
-import salem
+#import xarray as xr
 
 # Local libraries
-import class_climate
-import pygem.pygem_input as pygem_prms
+import pygem_input as pygem_prms
+from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance
 #from pygem.glacierdynamics import MassRedistributionCurveModel
 from pygem.oggm_compat import single_flowline_glacier_directory, single_flowline_glacier_directory_with_calving
-from pygem.shop import debris 
-import pygemfxns_gcmbiasadj as gcmbiasadj
 import pygem.pygem_modelsetup as modelsetup
-import spc_split_glaciers as split_glaciers
 from pygem.shop import debris, mbdata, icethickness
 
-from oggm import cfg
-from oggm import graphics
-from oggm import tasks
-from oggm import utils
+#from oggm import cfg
+#from oggm import graphics
+#from oggm import tasks
+#from oggm import utils
 from oggm import workflow
-from oggm.core import climate
-from oggm.core.flowline import FluxBasedModel
-from oggm.core.inversion import calving_flux_from_depth
+#from oggm.core import climate
+#from oggm.core.flowline import FluxBasedModel
+#from oggm.core.inversion import calving_flux_from_depth
 
-import math
 import torch
 import gpytorch
 import sklearn.model_selection
@@ -2585,7 +2573,7 @@ if __name__ == '__main__':
         num_cores = 1
 
     # Glacier number lists to pass for parallel processing
-    glac_no_lsts = split_glaciers.split_list(glac_no, n=num_cores, option_ordered=args.option_ordered)
+    glac_no_lsts = modelsetup.split_list(glac_no, n=num_cores, option_ordered=args.option_ordered)
 
     # Read GCM names from argument parser
     gcm_name = args.ref_gcm_name

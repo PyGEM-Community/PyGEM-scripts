@@ -14,8 +14,8 @@ import numpy as np
 from scipy.optimize import brentq
 
 # Local libraries
-import class_climate
-import pygem.pygem_input as pygem_prms
+import pygem_input as pygem_prms
+from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance
 from pygem.oggm_compat import single_flowline_glacier_directory
 import pygem.pygem_modelsetup as modelsetup
