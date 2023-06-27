@@ -4,6 +4,7 @@ Calibrate frontal ablation parameters for tidewater glaciers
 @author: davidrounce
 """
 # Built-in libraries
+#import argparse
 import os
 import pickle
 
@@ -68,6 +69,56 @@ debug=True
 debug_reg_calving_fxn = True
 prms_from_reg_priors=False
 prms_from_glac_cal=True
+
+##%% ----- Argument Parser -----
+#def getparser():
+#    """
+#    Use argparse to add arguments from the command line
+#
+#    Parameters
+#    ----------
+#    option_merge_data : int
+#        boolean switch to merge frontal ablation datasets and add mbclim data
+#    option_ind_calving_k : int
+#        boolean switch to calibrate individual glaciers
+#    option_reg_calving_k : int
+#        boolean switch to calibrate all glaciers regionally
+#    drop_ind_glaciers : int
+#        boolean switch for region 9 to decide if using individual glacier data or only regional data (used with option_reg_calving_k)
+#    option_merge_calving_k : int
+#        boolean switch to merge all regions together
+#    option_update_mb_data : int
+#        boolean switch to update gdirs with the new mass balance data
+#    option_plot_calving_k : int    
+#        boolean switch to make plots of the calibration performance
+#    option_scrap : int
+#        boolean switch to run scrap (test) calculations
+#
+#    Returns
+#    -------
+#    Object containing arguments and their respective values.
+#    """
+#    parser = argparse.ArgumentParser(description="run simulations from gcm list in parallel")
+#    # add arguments
+#    parser.add_argument('-option_merge_data', action='store', type=int, default=0,
+#                        help='boolean switch to merge frontal ablation datasets and add mbclim data (default 0 is off)')
+#    parser.add_argument('-option_ind_calving_k', action='store', type=int, default=0,
+#                        help='boolean switch to calibrate individual glaciers (default 0 is off)')
+#    parser.add_argument('-option_reg_calving_k', action='store', type=int, default=0,
+#                        help='boolean switch to calibrate all glaciers regionally (default 0 is off)')
+#    parser.add_argument('-drop_ind_glaciers', action='store', type=int, default=0,
+#                        help='boolean switch for region 9 to decide if using individual glacier data or only regional data (used with option_reg_calving_k) (default 0 is off)')
+#    parser.add_argument('-option_merge_calving_k', action='store', type=int, default=0,
+#                        help='boolean switch to merge all regions together (default 0 is off)')
+#    parser.add_argument('-option_update_mb_data', action='store', type=int, default=0,
+#                        help='boolean switch to update gdirs with the new mass balance data (default 0 is off)')
+#    parser.add_argument('-option_plot_calving_k', action='store', type=int, default=0,
+#                        help='boolean switch to make plots of the calibration performance (default 0 is off)')
+#    parser.add_argument('-option_scrap', action='store', type=int, default=0,
+#                        help='boolean switch to run scrap (test) calculations (default 0 is off)')
+#    return parser
+
+
 
 #%% ----- CONVERSION FUNCTIONS -----
 def mwea_to_gta(mwea, area_m2):

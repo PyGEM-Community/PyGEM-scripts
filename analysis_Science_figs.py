@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+w#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Analyses for Science manuscript
@@ -46,7 +46,7 @@ import xarray as xr
 # Local libraries
 #import class_climate
 #import class_mbdata
-import pygem.pygem_input as pygem_prms
+import pygem_input as pygem_prms
 #import pygemfxns_gcmbiasadj as gcmbiasadj
 import pygem.pygem_modelsetup as modelsetup
 

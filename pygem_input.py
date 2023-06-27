@@ -35,14 +35,14 @@ if glac_no is not None:
 # Types of glaciers to include (True) or exclude (False)
 include_landterm = True                # Switch to include land-terminating glaciers
 include_laketerm = True                # Switch to include lake-terminating glaciers
-include_tidewater = True               # Switch to include tidewater glaciers
+include_tidewater = True               # Switch to include marine-terminating glaciers
 ignore_calving = False                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
 
 oggm_base_url = 'https://cluster.klima.uni-bremen.de/~fmaussion/gdirs/prepro_l2_202010/elevbands_fl_with_consensus'
 #oggm_base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/L1-L2_files/elev_bands/'
 logging_level = 'DEBUG' # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
 
-#%% ===== CLIMATE DATA ===== 
+#%% ===== CLIMATE DATA AND TIME PERIODS ===== 
 # Reference period runs (reference period refers to the calibration period)
 ref_gcm_name = 'ERA5'               # reference climate dataset
 ref_startyear = 2000                # first year of model run (reference dataset)
@@ -71,8 +71,9 @@ if hindcast:
 #%% ===== CALIBRATION OPTIONS =====
 # Calibration option ('emulator', 'MCMC', 'MCMC_fullsim' 'HH2015', 'HH2015mod')
 #option_calibration = 'MCMC'
-option_calibration = 'emulator'
+#option_calibration = 'emulator'
 #option_calibration = 'MCMC_fullsim'
+option_calibration = 'HH2015mod'
 
 # Prior distribution (specify filename or set equal to None)
 priors_reg_fullfn = main_directory + '/../Output/calibration/priors_region.csv'
@@ -192,6 +193,10 @@ hugonnet_time1_cn = 't1'
 hugonnet_time2_cn = 't2'
 hugonnet_area_cn = 'area_km2'
 
+# ----- Frontal Ablation Dataset -----
+calving_fp = main_directory + '/../calving_data/analysis/'
+calving_fn = 'all-calving_cal_ind.csv'
+
 # ----- Ice thickness calibration parameter -----
 icethickness_cal_frac_byarea = 0.9  # Regional glacier area fraction that is used to calibrate the ice thickness
                                     #  e.g., 0.9 means only the largest 90% of glaciers by area will be used to calibrate
@@ -256,10 +261,6 @@ lapserate = -0.0065                 # temperature lapse rate for both gcm to gla
 tsnow_threshold = 1                 # temperature threshold for snow [deg C] (HH2015 used 1.5 degC +/- 1 degC)
 calving_k = 0.7                     # frontal ablation rate [yr-1]
 
-# Frontal ablation calibrated file
-calving_fp = main_directory + '/../calving_data/analysis/'
-calving_fn = 'all-calving_cal_ind.csv'
-
 
 #%% ===== MASS BALANCE MODEL OPTIONS =====
 # Initial surface type options
@@ -289,7 +290,6 @@ option_accumulation = 2             # 1: single threshold, 2: threshold +/- 1 de
 # Ablation model options
 option_ablation = 1                 # 1: monthly temp, 2: superimposed daily temps enabling melt near 0 (HH2015)
 option_ddf_firn = 1                 # 0: ddf_firn = ddf_snow; 1: ddf_firn = mean of ddf_snow and ddf_ice
-ddfdebris = ddfice                  # add options for handling debris-covered glaciers
 
 # Refreezing model option (options: 'Woodward' or 'HH2015')
 #  Woodward refers to Woodward et al. 1997 based on mean annual air temperature
@@ -299,7 +299,6 @@ if option_refreezing == 'Woodward':
     rf_month = 10                   # refreeze month
 elif option_refreezing == 'HH2015':
     rf_layers = 5                   # number of layers for refreezing model (8 is sufficient - Matthias)
-#    rf_layers_max = 8               # number of layers to include for refreeze calculation
     rf_dz = 10/rf_layers            # layer thickness (m)
     rf_dsc = 3                      # number of time steps for numerical stability (3 is sufficient - Matthias)
     rf_meltcrit = 0.002             # critical amount of melt [m w.e.] for initializing refreezing module
@@ -309,16 +308,18 @@ elif option_refreezing == 'HH2015':
     option_rf_limit_meltsnow = 1
     
     
-#%% CLIMATE DATA
+#%% ===== CLIMATE DATA FILEPATHS AND FILENAMES =====
 # ERA5 (default reference climate data)
 if ref_gcm_name == 'ERA5':
     era5_fp = main_directory + '/../climate_data/ERA5/'
-    era5_temp_fn = 'ERA5_temp_monthly.nc'
+    era5_temp_fn = 'ERA5_temp_monthly_1979_2023.nc'
     era5_tempstd_fn = 'ERA5_tempstd_monthly.nc'
-    era5_prec_fn = 'ERA5_totalprecip_monthly.nc'
+    era5_prec_fn = 'ERA5_totalprecip_monthly_1979_2023.nc'
     era5_elev_fn = 'ERA5_geopotential.nc'
-    era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly.nc'
-    era5_lr_fn = 'ERA5_lapserates_monthly.nc'
+#    era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly.nc'
+#    era5_lr_fn = 'ERA5_lapserates_monthly.nc'
+    era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly_2020_2023.nc'
+    era5_lr_fn = 'ERA5_lapserates_monthly_1979_2023.nc'
     assert os.path.exists(era5_fp), 'ERA5 filepath does not exist'
     assert os.path.exists(era5_fp + era5_temp_fn), 'ERA5 temperature filepath does not exist'
     assert os.path.exists(era5_fp + era5_prec_fn), 'ERA5 precipitation filepath does not exist'
@@ -373,7 +374,7 @@ else:
     debris_fp = None
 
 
-#%% MODEL TIME FRAME DATA
+#%% ===== MODEL TIME PERIOD DETAILS =====
 # Models require complete data for each year such that refreezing, scaling, etc. can be calculated
 # Leap year option
 option_leapyear = 0         # 1: include leap year days, 0: exclude leap years so February always has 28 days
@@ -388,7 +389,7 @@ option_dates = 1            # 1: use dates from date table (first of each month)
 timestep = 'monthly'        # time step ('monthly' only option at present)
 
 
-#%% MODEL PROPERTIES
+#%% ===== MODEL CONSTANTS =====
 density_ice = 900           # Density of ice [kg m-3] (or Gt / 1000 km3)
 density_water = 1000        # Density of water [kg m-3]
 area_ocean = 362.5 * 1e12   # Area of ocean [m2] (Cogley, 2012 from Marzeion et al. 2020)

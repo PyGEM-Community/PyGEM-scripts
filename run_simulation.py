@@ -1388,7 +1388,7 @@ def main(list_packed_vars):
                             graphics.plot_modeloutput_section(ev_model)
                             plt.show()
 
-                        try:
+                        try:                        
                             if oggm_version > 1.301:
                                 diag = ev_model.run_until_and_store(nyears)
                             else:
