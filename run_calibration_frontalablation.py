@@ -7,6 +7,7 @@ Calibrate frontal ablation parameters for tidewater glaciers
 #import argparse
 import os
 import pickle
+import sys
 
 # External libraries
 import pandas as pd
@@ -16,6 +17,10 @@ from scipy.stats import linregress
 import xarray as xr
 
 # Local libraries
+try:
+    import pygem
+except:
+    sys.path.append(os.getcwd() + '/../PyGEM/')
 import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
 from pygem.massbalance import PyGEMMassBalance
@@ -47,8 +52,6 @@ option_merge_calving_k = False   # Merge all regions together
 option_update_mb_data = False   # Update gdirs with the new mass balance data
 option_plot_calving_k = True    # Plots of the calibration performance
 option_scrap = False             # Scrap calculations
-
-
 
 frontal_ablation_Gta_cn = 'fa_gta_obs'
 frontal_ablation_Gta_unc_cn = 'fa_gta_obs_unc'

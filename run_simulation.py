@@ -12,6 +12,7 @@ import collections
 import inspect
 import multiprocessing
 import os
+import sys
 import time
 # External libraries
 import pandas as pd
@@ -20,6 +21,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import median_abs_deviation
 import xarray as xr
+
+try:
+    import pygem
+except:
+    sys.path.append(os.getcwd() + '/../PyGEM/')
 
 # Local libraries
 import pygem.gcmbiasadj as gcmbiasadj

@@ -71,7 +71,7 @@ if __name__ == '__main__':
                                    'complevel':9}}
         elif vn2process in ['lapserate']:
             # Precipitation data
-            ds_merged_fn = 'ERA5_lapserate_monthly_1979_2023.nc'
+            ds_merged_fn = 'ERA5_lapserates_monthly_1979_2023.nc'
             ds_fns = ['ERA5_lapserates_monthly.nc', 'ERA5_lapserates_monthly_2020_2023.nc']
             encoding = {'lapserate':{'_FillValue': False,
                                    'zlib':True,

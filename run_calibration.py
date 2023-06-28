@@ -6,6 +6,7 @@ import argparse
 import inspect
 import multiprocessing
 import os
+import sys
 import time
 # External libraries
 import pandas as pd
@@ -18,6 +19,10 @@ from scipy import stats
 #import xarray as xr
 
 # Local libraries
+try:
+    import pygem
+except:
+    sys.path.append(os.getcwd() + '/../PyGEM/')
 import pygem_input as pygem_prms
 from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance

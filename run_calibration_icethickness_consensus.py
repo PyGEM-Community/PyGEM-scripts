@@ -4,6 +4,7 @@
 import argparse
 from collections import OrderedDict
 import os
+import sys
 import time
 
 # External libraries
@@ -14,6 +15,10 @@ import numpy as np
 from scipy.optimize import brentq
 
 # Local libraries
+try:
+    import pygem
+except:
+    sys.path.append(os.getcwd() + '/../PyGEM/')
 import pygem_input as pygem_prms
 from pygem import class_climate
 from pygem.massbalance import PyGEMMassBalance

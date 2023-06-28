@@ -28,14 +28,14 @@ import xarray as xr
 from cartopy.io.shapereader import Reader
 from cartopy.feature import ShapelyFeature
 
-import pygem.pygem_input as pygem_prms
+import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
 
 
 option_global_vol_remaining_byscenario = False   # Option to plot global map of volume remaining by rcp/ssp scenarios
 option_global_vol_remaining_bydeg = True       # Option to plot global map of volume remaining by degrees (e.g, +2, +3, etc.)
 
-rgi_shp_fn = '/Users/drounce/Documents/Papers/pygem_oggm_global/qgis/rgi60_all_simplified2_robinson.shp'
+rgi_shp_fn = '/Users/drounce/Documents/HiMAT/qgis_datasets/rgi60_all_simplified2_robinson.shp'
 
 netcdf_fp = '/Users/drounce/Documents/HiMAT/spc_backup/nsidc/glacier_stats/'
 
@@ -73,10 +73,10 @@ if option_global_vol_remaining_bydeg:
     regions = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
 #    regions = [1]
 
-    warming_groups = [1.5,2,2.7,3,4]
-    warming_groups_bnds = [0.25, 0.5, 0.5, 0.5, 0.5]
-#    warming_groups = [2]
-#    warming_groups_bnds = [0.5]
+#    warming_groups = [1.5,2,2.7,3,4]
+#    warming_groups_bnds = [0.25, 0.5, 0.5, 0.5, 0.5]
+    warming_groups = [5]
+    warming_groups_bnds = [0.5]
     
     add_rgi_glaciers = True
     
