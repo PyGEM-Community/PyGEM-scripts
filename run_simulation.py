@@ -69,6 +69,11 @@ def getparser():
         gcm name
     scenario (optional) : str
         representative concentration pathway or shared socioeconomic pathway (ex. 'rcp26', 'ssp585')
+    realization (optional) : str
+        single realization from large ensemble (ex. '1011.001', '1301.020')
+        see CESM2 Large Ensemble Community Project by NCAR for more information
+    realization_list (optional) : str
+        text file that contains the realizations to be used in the model simulation
     num_simultaneous_processes (optional) : int
         number of cores to use in parallels
     option_parallels (optional) : int
@@ -98,6 +103,10 @@ def getparser():
                         help='GCM name used for model run')
     parser.add_argument('-scenario', action='store', type=str, default=None,
                         help='rcp or ssp scenario used for model run (ex. rcp26 or ssp585)')
+    parser.add_argument('-realization', action='store', type=str, default=None,
+                        help='realization from large ensemble used for model run (ex. 1011.001 or 1301.020)')
+    parser.add_argument('-realization_list', action='store', type=str, default=None,
+                        help='text file full of realizations to run')
     parser.add_argument('-gcm_startyear', action='store', type=int, default=pygem_prms.gcm_startyear,
                         help='start year for the model run')
     parser.add_argument('-gcm_endyear', action='store', type=int, default=pygem_prms.gcm_endyear,
@@ -942,11 +951,13 @@ def main(list_packed_vars):
     netcdf files of the simulation output (specific output is dependent on the output option)
     """
     # Unpack variables
+    parser = getparser()
+    args = parser.parse_args()
     count = list_packed_vars[0]
     glac_no = list_packed_vars[1]
     gcm_name = list_packed_vars[2]
-    parser = getparser()
-    args = parser.parse_args()
+    if args.realization or args.realization_list is not None:
+        realization = list_packed_vars[3]
     if (gcm_name != pygem_prms.ref_gcm_name) and (args.scenario is None):
         scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
     elif not args.scenario is None:
@@ -973,7 +984,10 @@ def main(list_packed_vars):
         gcm = class_climate.GCM(name=gcm_name)
     else:
         # GCM object
-        gcm = class_climate.GCM(name=gcm_name, scenario=scenario)
+        if args.realization or args.realization_list is not None:
+            gcm = class_climate.GCM(name=gcm_name, scenario=scenario, realization=realization)
+        else:
+            gcm = class_climate.GCM(name=gcm_name, scenario=scenario)
         # Reference GCM
         ref_gcm = class_climate.GCM(name=pygem_prms.ref_gcm_name)
         # Adjust reference dates in event that reference is longer than GCM data
@@ -1062,6 +1076,29 @@ def main(list_packed_vars):
                                                                         dates_table_ref, dates_table,
                                                                         ref_spinupyears=pygem_prms.ref_spinupyears,
                                                                         gcm_spinupyears=pygem_prms.gcm_spinupyears)
+        # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
+        elif pygem_prms.option_bias_adjustment == 3:
+            # Temperature bias correction
+            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_QDM(ref_temp, ref_elev, gcm_temp,
+                                                                        dates_table_ref, dates_table,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+
+
+            # Precipitation bias correction
+            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_QDM(ref_prec, ref_elev, gcm_prec,
+                                                                        dates_table_ref, dates_table,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+            
+
+    # ===== OGGM TIME PERIOD =====
+    # reload dates_table for new time period that does not include previous time
+    #   period (e.g., 1981-2000)
+    dates_table = modelsetup.datesmodelrun(
+            startyear=pygem_prms.gcm_bc_startyear, endyear=pygem_prms.gcm_bc_endyear, spinupyears=pygem_prms.gcm_bc_spinupyears,
+            option_wateryear=pygem_prms.gcm_bc_wateryear)
+
             
     # ===== RUN MASS BALANCE =====
     # Number of simulations
@@ -1812,14 +1849,27 @@ def main(list_packed_vars):
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
                                           str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
+                        elif args.realization or args.realization_list is not None:
+                            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
+                                          str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
+                                          str(args.gcm_endyear) + '_all.nc')
+                            np.savetxt(output_sim_fp + 'tas_mon_' + glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
+                                          str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
+                                          str(args.gcm_endyear) + '.csv', gcm_temp_adj, delimiter="\n")
+                            np.savetxt(output_sim_fp + 'pr_mon_' + glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
+                                          str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
+                                          str(args.gcm_endyear) + '.csv', gcm_prec_adj, delimiter="\n")
                         else:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
                                           str(args.gcm_endyear) + '_all.nc')
                         # Export netcdf
-                        output_ds_all_stats.to_netcdf(output_sim_fp + netcdf_fn, encoding=encoding)
-            
+                        output_ds_all_stats.to_netcdf(output_sim_fp + netcdf_fn, encoding=encoding) 
+                        
                         # Close datasets
                         output_ds_all_stats.close()
                     
@@ -1846,6 +1896,11 @@ def main(list_packed_vars):
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
                                           str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
+                        elif args.realization or args.realization_list is not None:
+                            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
+                                          str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
+                                          str(args.gcm_endyear) + '_binned.nc')
                         else:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
@@ -1958,9 +2013,17 @@ if __name__ == '__main__':
             gcm_list = gcm_fn.read().splitlines()
             scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
             print('Found %d gcms to process'%(len(gcm_list)))
-
-    
-
+  
+    realization = args.realization_list
+    if args.realization is not None:
+        realization = args.realization
+    elif args.realization_list is not None:
+        with open(args.realization_list, 'r') as real_fn:
+            real_list = real_fn.read().splitlines()
+            print('Found %d realizations to process'%(len(real_list)))
+    else:
+        print('Zero realizations to run.')
+ 
     # Loop through all GCMs
     for gcm_name in gcm_list:
         if args.scenario is None:
@@ -1969,8 +2032,18 @@ if __name__ == '__main__':
             print('Processing:', gcm_name, scenario)
         # Pack variables for multiprocessing
         list_packed_vars = []
-        for count, glac_no_lst in enumerate(glac_no_lsts):
-            list_packed_vars.append([count, glac_no_lst, gcm_name])
+        if args.realization is not None:
+            for count, glac_no_lst in enumerate(glac_no_lsts):
+                list_packed_vars.append([count, glac_no_lst, gcm_name, realization])           
+        elif args.realization_list is not None:
+            for real in real_list:
+                for count, glac_no_lst in enumerate(glac_no_lsts):
+                    list_packed_vars.append([count, glac_no_lst, gcm_name, real])
+        else:
+            for count, glac_no_lst in enumerate(glac_no_lsts):
+                list_packed_vars.append([count, glac_no_lst, gcm_name])
+                
+        print('len list packed vars:', len(list_packed_vars))
            
         # Parallel processing
         if args.option_parallels != 0:
