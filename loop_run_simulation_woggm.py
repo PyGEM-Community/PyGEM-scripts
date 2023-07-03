@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 20 2019
-@author: davidrounce
+Loop through run simulation script
 """
-import os
 from subprocess import call
 
 #region = [15]
@@ -15,7 +13,7 @@ from subprocess import call
 
 gcm_names = ['BCC-CSM2-MR', 'CESM2', 'CESM2-WACCM', 'EC-Earth3', 'EC-Earth3-Veg', 'FGOALS-f3-L', 
              'GFDL-ESM4', 'INM-CM4-8', 'INM-CM5-0', 'MPI-ESM1-2-HR', 'MRI-ESM2-0', 'NorESM2-MM']
-rcps = ['ssp126', 'ssp370']
+rcps = ['ssp126', 'ssp245', 'ssp370', 'ssp585']
 #rcps = ['ssp245']
 
 #gcm_names = ['EC-Earth3', 'EC-Earth3-Veg', 'GFDL-ESM4', 'MRI-ESM2-0']
@@ -24,9 +22,11 @@ rcps = ['ssp126', 'ssp370']
 #%% Using input file
 for gcm in gcm_names:
     for rcp in rcps:
-
+        
+        print(gcm, rcp)
+        
         # Append arguments to call list
-        call_list = ["python", "run_simulation_woggm.py"]
+        call_list = ["python", "run_simulation.py"]
         call_list.append("-gcm_name={}".format(gcm))
         call_list.append("-scenario={}".format(rcp))
         call_list.append('-option_parallels=0')

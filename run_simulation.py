@@ -727,7 +727,7 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
 
 def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_initial, 
                                   output_glac_bin_volume_annual, output_glac_bin_icethickness_annual, 
-                                  output_glac_bin_massbalclim_annual,
+                                  output_glac_bin_massbalclim_annual, output_glac_bin_dist,
                                   option_wateryear=pygem_prms.gcm_wateryear):
     """
     Create empty xarray dataset that will be used to record binned ice thickness changes
@@ -774,6 +774,7 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
     output_coords_dict['O1Region'] = collections.OrderedDict([('glac', glac_values)])
     output_coords_dict['O2Region'] = collections.OrderedDict([('glac', glac_values)])
     output_coords_dict['Area'] = collections.OrderedDict([('glac', glac_values)])
+    output_coords_dict['bin_distance'] = collections.OrderedDict([('glac', glac_values), ('bin',bin_values)])
     output_coords_dict['bin_surface_h_initial'] = collections.OrderedDict([('glac', glac_values), ('bin',bin_values)])
     output_coords_dict['bin_volume_annual'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
@@ -822,6 +823,10 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
                 'long_name': 'glacier area',
                 'units': 'm2',
                 'comment': 'value from RGIv6.0'},
+        'bin_distance': {
+                'long_name': 'distance downglacier',
+                'units': 'm',
+                'comment': 'horizontal distance calculated from top of glacier moving downglacier'},
         'bin_surface_h_initial': {
                 'long_name': 'initial binned surface elevation',
                 'units': 'm above sea level'},
@@ -906,6 +911,7 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
     output_ds_all['O1Region'].values = np.array([glacier_rgi_table.O1Region])
     output_ds_all['O2Region'].values = np.array([glacier_rgi_table.O2Region])
     output_ds_all['Area'].values = np.array([glacier_rgi_table.Area * 1e6])
+    output_ds_all['bin_distance'].values = output_glac_bin_dist[np.newaxis,:]
     output_ds_all['bin_surface_h_initial'].values = surface_h_initial[np.newaxis,:]
     output_ds_all['bin_volume_annual'].values = (
             np.median(output_glac_bin_volume_annual, axis=2)[np.newaxis,:,:])
@@ -1827,11 +1833,15 @@ def main(list_packed_vars):
                     # ----- DECADAL ICE THICKNESS STATS FOR OVERDEEPENINGS -----
                     if pygem_prms.export_binned_thickness and glacier_rgi_table.Area > pygem_prms.export_binned_area_threshold:
                         
+                        # Distance from top of glacier downglacier
+                        output_glac_bin_dist = np.arange(nfls[0].nx) * nfls[0].dx_meter
+                        # Create dataset to export
                         output_ds_binned_stats, encoding_binned = (
                                 create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_initial,
                                                               output_glac_bin_volume_annual,
                                                               output_glac_bin_icethickness_annual, 
-                                                              output_glac_bin_massbalclim_annual))
+                                                              output_glac_bin_massbalclim_annual,
+                                                              output_glac_bin_dist))
                         # Export statistics to netcdf
                         output_sim_binned_fp = pygem_prms.output_sim_fp + reg_str + '/' + gcm_name + '/'
                         if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
@@ -1892,6 +1902,7 @@ def main(list_packed_vars):
                     
                     
         print('\n\nADD BACK IN EXCEPTION\n\n')
+        
 #        except:
 #            # LOG FAILURE
 #            fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'

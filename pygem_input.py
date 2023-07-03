@@ -12,7 +12,7 @@ import numpy as np
 main_directory = os.getcwd()
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = 'June 28 2023'
+model_run_date = 'July 2 2023'
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [1]                 # 1st order region number (RGI V6.0)
@@ -54,7 +54,7 @@ if ref_spinupyears > 0:
 
 # Simulation runs (refers to period of simulation and needed separately from reference year to account for bias adjustments)
 gcm_startyear = 2000            # first year of model run (simulation dataset)
-gcm_endyear = 2022              # last year of model run (simulation dataset)
+gcm_endyear = 2100              # last year of model run (simulation dataset)
 gcm_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
 gcm_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
 constantarea_years = 0          # number of years to not let the area or volume change
@@ -220,7 +220,7 @@ sim_stat_cns = ['median', 'mad']
 
 # Output options
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
-export_binned_thickness = False      # Export binned ice thickness
+export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
 
