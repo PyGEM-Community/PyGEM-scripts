@@ -11,7 +11,6 @@ import time
 # External libraries
 import pandas as pd
 import pickle
-from pymc import deterministic
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
@@ -41,8 +40,10 @@ from oggm import workflow
 #from oggm.core.inversion import calving_flux_from_depth
 
 # Model-specific libraries
-if pygem_prms.option_calibration in ['MCMC', 'emulator']:
+if pygem_prms.option_calibration in ['MCMC']:
     import pymc
+    from pymc import deterministic
+if pygem_prms.option_calibration in ['emulator']:
     import torch
     import gpytorch
     import sklearn.model_selection
@@ -376,7 +377,6 @@ def main(list_packed_vars):
 
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====        
         try:
-
             if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
                 gdir = single_flowline_glacier_directory(glacier_str, logging_level='CRITICAL')
                 gdir.is_tidewater = False
@@ -391,10 +391,10 @@ def main(list_packed_vars):
             
             # Add climate data to glacier directory
             gdir.historical_climate = {'elev': gcm_elev[glac],
-                                       'temp': gcm_temp[glac,:],
-                                       'tempstd': gcm_tempstd[glac,:],
-                                       'prec': gcm_prec[glac,:],
-                                       'lr': gcm_lr[glac,:]}
+                                      'temp': gcm_temp[glac,:],
+                                      'tempstd': gcm_tempstd[glac,:],
+                                      'prec': gcm_prec[glac,:],
+                                      'lr': gcm_lr[glac,:]}
             gdir.dates_table = dates_table
 
             # ----- Calibration data -----
@@ -446,7 +446,7 @@ def main(list_packed_vars):
                 if debug:
                     print('  mb_data (mwea): ' + str(np.round(mb_obs_mwea,2)) + ' +/- ' + str(np.round(mb_obs_mwea_err,2)))
                 
-                     
+                    
             except:
                 gdir.mbdata = None
                 
@@ -467,16 +467,14 @@ def main(list_packed_vars):
             assert os.path.exists(gdir.get_filepath('mb_obs')), 'Mass balance data missing. Check dataset and column names'
 
         # ----- CALIBRATION OPTIONS ------
-#        print('fls:', fls)
-#        print('gdir.mbdata:', gdir.mbdata)
         if (fls is not None) and (gdir.mbdata is not None) and (glacier_area.sum() > 0):
             
             modelprms = {'kp': pygem_prms.kp,
-                         'tbias': pygem_prms.tbias,
-                         'ddfsnow': pygem_prms.ddfsnow,
-                         'ddfice': pygem_prms.ddfice,
-                         'tsnow_threshold': pygem_prms.tsnow_threshold,
-                         'precgrad': pygem_prms.precgrad}
+                        'tbias': pygem_prms.tbias,
+                        'ddfsnow': pygem_prms.ddfsnow,
+                        'ddfice': pygem_prms.ddfice,
+                        'tsnow_threshold': pygem_prms.tsnow_threshold,
+                        'precgrad': pygem_prms.precgrad}
             
             #%% ===== EMULATOR TO SETUP MCMC ANALYSIS AND/OR RUN HH2015 WITH EMULATOR =====
             # - precipitation factor, temperature bias, degree-day factor of snow
@@ -527,7 +525,7 @@ def main(list_packed_vars):
                     nbinyears_negmbclim, mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls=fls,
                                                                 return_tbias_mustmelt_wmb=True)
                     output_all = np.array([modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow'], 
-                                           mb_mwea, nbinyears_negmbclim])
+                                          mb_mwea, nbinyears_negmbclim])
                     
                     # Tbias lower bound & high precipitation factor
                     modelprms['kp'] = stats.gamma.ppf(0.99, pygem_prms.kp_gamma_alpha, scale=1/pygem_prms.kp_gamma_beta)
@@ -579,12 +577,12 @@ def main(list_packed_vars):
                     # Temperature bias
                     if pygem_prms.tbias_disttype == 'uniform':
                         tbias_random = np.random.uniform(low=tbias_bndlow, high=tbias_bndhigh, 
-                                                         size=pygem_prms.emulator_sims)
+                                                        size=pygem_prms.emulator_sims)
                     elif pygem_prms.tbias_disttype == 'truncnormal':
                         tbias_zlow = (tbias_bndlow - tbias_middle) / pygem_prms.tbias_sigma
                         tbias_zhigh = (tbias_bndhigh - tbias_middle) / pygem_prms.tbias_sigma
                         tbias_random = stats.truncnorm.rvs(a=tbias_zlow, b=tbias_zhigh, loc=tbias_middle,
-                                                           scale=pygem_prms.tbias_sigma, size=pygem_prms.emulator_sims)
+                                                          scale=pygem_prms.tbias_sigma, size=pygem_prms.emulator_sims)
                     if debug:
                         print('\ntbias random:', tbias_random.mean(), tbias_random.std())
                     
@@ -598,7 +596,7 @@ def main(list_packed_vars):
                     ddfsnow_zlow = (pygem_prms.ddfsnow_bndlow - pygem_prms.ddfsnow_mu) / pygem_prms.ddfsnow_sigma
                     ddfsnow_zhigh = (pygem_prms.ddfsnow_bndhigh - pygem_prms.ddfsnow_mu) / pygem_prms.ddfsnow_sigma
                     ddfsnow_random = stats.truncnorm.rvs(a=ddfsnow_zlow, b=ddfsnow_zhigh, loc=pygem_prms.ddfsnow_mu,
-                                                         scale=pygem_prms.ddfsnow_sigma, size=pygem_prms.emulator_sims)
+                                                        scale=pygem_prms.ddfsnow_sigma, size=pygem_prms.emulator_sims)
                     if debug:    
                         print('ddfsnow random:', ddfsnow_random.mean(), ddfsnow_random.std(),'\n')
                     
@@ -730,14 +728,14 @@ def main(list_packed_vars):
                         
                         
                     def single_param_optimizer(modelprms_subset, mb_obs_mwea, prm2opt=None,
-                                               kp_bnds=None, tbias_bnds=None, ddfsnow_bnds=None,
-                                               mb_mwea_threshold=0.005, debug=False):
+                                              kp_bnds=None, tbias_bnds=None, ddfsnow_bnds=None,
+                                              mb_mwea_threshold=0.005, debug=False):
                         """ Single parameter optimizer based on a mid-point approach 
                         
                         Computationally more robust and sometimes faster than scipy minimize
                         """
                         assert prm2opt is not None, 'For single_param_optimizer you must specify parameter to optimize'
-                   
+                  
                         if prm2opt == 'kp':
                             prm_bndlow = kp_bnds[0]
                             prm_bndhigh = kp_bnds[1]
@@ -783,7 +781,7 @@ def main(list_packed_vars):
                         else:
                             ncount = 0
                             while (np.absolute(mb_mwea_mid - mb_obs_mwea) > mb_mwea_threshold and 
-                                   np.absolute(mb_mwea_low - mb_mwea_high) > mb_mwea_threshold):
+                                  np.absolute(mb_mwea_low - mb_mwea_high) > mb_mwea_threshold):
                                 if debug:
                                     print('\n ncount:', ncount)
                                 (prm_bndlow, prm_bndhigh, prm_mid, mb_mwea_low, mb_mwea_high, mb_mwea_mid) = (
@@ -836,8 +834,8 @@ def main(list_packed_vars):
                         tbias_opt = tbias_bndlow
                         kp_opt= kp_bndhigh
                         troubleshoot_fp = (pygem_prms.output_filepath + 'errors/' + 
-                                           pygem_prms.option_calibration + '/' + 
-                                           glacier_str.split('.')[0].zfill(2) + '/')
+                                          pygem_prms.option_calibration + '/' + 
+                                          glacier_str.split('.')[0].zfill(2) + '/')
                         if not os.path.exists(troubleshoot_fp):
                             os.makedirs(troubleshoot_fp, exist_ok=True)
                         txt_fn_extrapfail = glacier_str + "-mbs_obs_outside_bnds.txt"
@@ -850,8 +848,8 @@ def main(list_packed_vars):
                         tbias_opt = tbias_bndhigh
                         kp_opt= kp_bndlow
                         troubleshoot_fp = (pygem_prms.output_filepath + 'errors/' + 
-                                           pygem_prms.option_calibration + '/' + 
-                                           glacier_str.split('.')[0].zfill(2) + '/')
+                                          pygem_prms.option_calibration + '/' + 
+                                          glacier_str.split('.')[0].zfill(2) + '/')
                         if not os.path.exists(troubleshoot_fp):
                             os.makedirs(troubleshoot_fp, exist_ok=True)
                         txt_fn_extrapfail = glacier_str + "-mbs_obs_outside_bnds.txt"
@@ -1024,23 +1022,23 @@ def main(list_packed_vars):
             elif pygem_prms.option_calibration == 'MCMC':
                 # ===== Define functions needed for MCMC method =====
                 def run_MCMC(gdir,
-                             kp_disttype=pygem_prms.kp_disttype,
-                             kp_gamma_alpha=None, kp_gamma_beta=None,
-                             kp_lognorm_mu=None, kp_lognorm_tau=None,
-                             kp_mu=None, kp_sigma=None, kp_bndlow=None, kp_bndhigh=None,
-                             kp_start=None,
-                             tbias_disttype=pygem_prms.tbias_disttype,
-                             tbias_mu=None, tbias_sigma=None, tbias_bndlow=None, tbias_bndhigh=None,
-                             tbias_start=None,
-                             ddfsnow_disttype=pygem_prms.ddfsnow_disttype,
-                             ddfsnow_mu=pygem_prms.ddfsnow_mu, ddfsnow_sigma=pygem_prms.ddfsnow_sigma,
-                             ddfsnow_bndlow=pygem_prms.ddfsnow_bndlow, ddfsnow_bndhigh=pygem_prms.ddfsnow_bndhigh,
-                             ddfsnow_start=pygem_prms.ddfsnow_start,
-                             iterations=10, mcmc_burn_no=pygem_prms.mcmc_burn_no, thin=pygem_prms.thin_interval, 
-                             tune_interval=1000, step=None, tune_throughout=True, save_interval=None, 
-                             burn_till_tuned=False, stop_tuning_after=5,
-                             verbose=0, progress_bar=args.progress_bar, dbname=None,
-                             use_potentials=True, mb_max_loss=None):
+                            kp_disttype=pygem_prms.kp_disttype,
+                            kp_gamma_alpha=None, kp_gamma_beta=None,
+                            kp_lognorm_mu=None, kp_lognorm_tau=None,
+                            kp_mu=None, kp_sigma=None, kp_bndlow=None, kp_bndhigh=None,
+                            kp_start=None,
+                            tbias_disttype=pygem_prms.tbias_disttype,
+                            tbias_mu=None, tbias_sigma=None, tbias_bndlow=None, tbias_bndhigh=None,
+                            tbias_start=None,
+                            ddfsnow_disttype=pygem_prms.ddfsnow_disttype,
+                            ddfsnow_mu=pygem_prms.ddfsnow_mu, ddfsnow_sigma=pygem_prms.ddfsnow_sigma,
+                            ddfsnow_bndlow=pygem_prms.ddfsnow_bndlow, ddfsnow_bndhigh=pygem_prms.ddfsnow_bndhigh,
+                            ddfsnow_start=pygem_prms.ddfsnow_start,
+                            iterations=10, mcmc_burn_no=pygem_prms.mcmc_burn_no, thin=pygem_prms.thin_interval, 
+                            tune_interval=1000, step=None, tune_throughout=True, save_interval=None, 
+                            burn_till_tuned=False, stop_tuning_after=5,
+                            verbose=0, progress_bar=args.progress_bar, dbname=None,
+                            use_potentials=True, mb_max_loss=None):
                     """
                     Runs the MCMC algorithm.
                     Runs the MCMC algorithm by setting the prior distributions and calibrating the probability
@@ -1155,7 +1153,7 @@ def main(list_packed_vars):
                         mb_mwea = mb_mwea_norm * y_std + y_mean
                         return mb_mwea
                     
-                       
+                      
                     # Rough estimate of minimum elevation mass balance function
                     def calc_mb_total_minelev(modelprms):
                         """ Approximate estimate of the mass balance at minimum elevation """
@@ -1168,14 +1166,14 @@ def main(list_packed_vars):
                         # Temperature using gcm and glacier lapse rates
                         #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
                         T_minelev = (glacier_gcm_temp + glacier_gcm_lr *
-                                     (glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale] - glacier_gcm_elev) +
-                                     glacier_gcm_lr * 
-                                     (min_elev - glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale]) +
-                                     modelprms['tbias'])
+                                    (glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale] - glacier_gcm_elev) +
+                                    glacier_gcm_lr * 
+                                    (min_elev - glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale]) +
+                                    modelprms['tbias'])
                         # Precipitation using precipitation factor and precipitation gradient
                         #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
                         P_minelev = (glacier_gcm_prec * modelprms['kp'] * (1 + modelprms['precgrad'] * (min_elev -
-                                     glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale])))
+                                    glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale])))
                         # Accumulation using tsnow_threshold
                         Acc_minelev = np.zeros(P_minelev.shape)
                         Acc_minelev[T_minelev <= modelprms['tsnow_threshold']] = (
@@ -1248,7 +1246,7 @@ def main(list_packed_vars):
                         priors_dict['tbias_sigma'] = tbias_sigma
                     elif tbias_disttype =='truncnormal':
                         tbias = pymc.TruncatedNormal('tbias', mu=tbias_mu, tau=1/(tbias_sigma**2),
-                                                     a=tbias_bndlow, b=tbias_bndhigh, value=tbias_start)
+                                                    a=tbias_bndlow, b=tbias_bndhigh, value=tbias_start)
                         priors_dict['tbias_mu'] = tbias_mu
                         priors_dict['tbias_sigma'] = tbias_sigma
                         priors_dict['tbias_bndlow'] = tbias_bndlow
@@ -1263,14 +1261,14 @@ def main(list_packed_vars):
                     #  0.0015 (Braithwaite, 2008), since it's based on data; uniform should only be used for testing
                     if ddfsnow_disttype == 'truncnormal':
                         ddfsnow = pymc.TruncatedNormal('ddfsnow', mu=ddfsnow_mu, tau=1/(ddfsnow_sigma**2),
-                                                       a=ddfsnow_bndlow, b=ddfsnow_bndhigh, value=ddfsnow_start)
+                                                      a=ddfsnow_bndlow, b=ddfsnow_bndhigh, value=ddfsnow_start)
                         priors_dict['ddfsnow_mu'] = ddfsnow_mu
                         priors_dict['ddfsnow_sigma'] = ddfsnow_sigma
                         priors_dict['ddfsnow_bndlow'] = ddfsnow_bndlow
                         priors_dict['ddfsnow_bndhigh'] = ddfsnow_bndhigh
                     elif ddfsnow_disttype == 'uniform':
                         ddfsnow = pymc.Uniform('ddfsnow', lower=ddfsnow_bndlow, upper=ddfsnow_bndhigh,
-                                               value=ddfsnow_start)
+                                              value=ddfsnow_start)
                         priors_dict['ddfsnow_bndlow'] = ddfsnow_bndlow
                         priors_dict['ddfsnow_bndhigh'] = ddfsnow_bndhigh
 
@@ -1329,10 +1327,10 @@ def main(list_packed_vars):
                     # Set model
                     if use_potentials:
                         model = pymc.MCMC([{'kp':kp, 'tbias':tbias, 'ddfsnow':ddfsnow,
-                                           'massbal':massbal, 'obs_massbal':obs_massbal}, mb_max, must_melt])
+                                          'massbal':massbal, 'obs_massbal':obs_massbal}, mb_max, must_melt])
                     else:
                         model = pymc.MCMC({'kp':kp, 'tbias':tbias, 'ddfsnow':ddfsnow,
-                                           'massbal':massbal, 'obs_massbal':obs_massbal})
+                                          'massbal':massbal, 'obs_massbal':obs_massbal})
 
                     
                     # Step method (if changed from default)
@@ -1347,8 +1345,8 @@ def main(list_packed_vars):
                     else:
                         progress_bar_switch = False
                     model.sample(iter=iterations, burn=mcmc_burn_no, thin=thin,
-                                 tune_interval=tune_interval, tune_throughout=tune_throughout,
-                                 save_interval=save_interval, verbose=verbose, progress_bar=progress_bar_switch)
+                                tune_interval=tune_interval, tune_throughout=tune_throughout,
+                                save_interval=save_interval, verbose=verbose, progress_bar=progress_bar_switch)
                     # Close database
                     model.db.close()
 
@@ -1435,7 +1433,7 @@ def main(list_packed_vars):
                             consensus_mass = glacier_rgi_table.Area * 1e6 * ice_thickness_constant * pygem_prms.density_ice
     
                         mb_max_loss = (-1 * consensus_mass / pygem_prms.density_water / gdir.rgi_area_m2 / 
-                                       (gdir.dates_table.shape[0] / 12))
+                                      (gdir.dates_table.shape[0] / 12))
                         
                         
                         if debug:
@@ -1465,7 +1463,7 @@ def main(list_packed_vars):
                         modelprms_export['kp'] = {chain_str  : list(model.trace('kp')[:])}
                         modelprms_export['ddfsnow'] = {chain_str : list(model.trace('ddfsnow')[:])}
                         modelprms_export['ddfice'] = {chain_str : list(model.trace('ddfsnow')[:] /
-                                                                   pygem_prms.ddfsnow_iceratio)}
+                                                                  pygem_prms.ddfsnow_iceratio)}
                         modelprms_export['mb_mwea'] = {chain_str : list(model.trace('massbal')[:])}
     
                     # Export model parameters
@@ -1528,23 +1526,23 @@ def main(list_packed_vars):
                 
                 # ===== Define functions needed for MCMC method =====
                 def run_MCMC(gdir,
-                             kp_disttype=pygem_prms.kp_disttype,
-                             kp_gamma_alpha=None, kp_gamma_beta=None,
-                             kp_lognorm_mu=None, kp_lognorm_tau=None,
-                             kp_mu=None, kp_sigma=None, kp_bndlow=None, kp_bndhigh=None,
-                             kp_start=None,
-                             tbias_disttype=pygem_prms.tbias_disttype,
-                             tbias_mu=None, tbias_sigma=None, tbias_bndlow=None, tbias_bndhigh=None,
-                             tbias_start=None,
-                             ddfsnow_disttype=pygem_prms.ddfsnow_disttype,
-                             ddfsnow_mu=pygem_prms.ddfsnow_mu, ddfsnow_sigma=pygem_prms.ddfsnow_sigma,
-                             ddfsnow_bndlow=pygem_prms.ddfsnow_bndlow, ddfsnow_bndhigh=pygem_prms.ddfsnow_bndhigh,
-                             ddfsnow_start=pygem_prms.ddfsnow_start,
-                             iterations=10, mcmc_burn_no=pygem_prms.mcmc_burn_no, thin=pygem_prms.thin_interval, 
-                             tune_interval=1000, step=None, tune_throughout=True, save_interval=None, 
-                             burn_till_tuned=False, stop_tuning_after=5,
-                             verbose=0, progress_bar=args.progress_bar, dbname=None,
-                             use_potentials=True, mb_max_loss=None):
+                            kp_disttype=pygem_prms.kp_disttype,
+                            kp_gamma_alpha=None, kp_gamma_beta=None,
+                            kp_lognorm_mu=None, kp_lognorm_tau=None,
+                            kp_mu=None, kp_sigma=None, kp_bndlow=None, kp_bndhigh=None,
+                            kp_start=None,
+                            tbias_disttype=pygem_prms.tbias_disttype,
+                            tbias_mu=None, tbias_sigma=None, tbias_bndlow=None, tbias_bndhigh=None,
+                            tbias_start=None,
+                            ddfsnow_disttype=pygem_prms.ddfsnow_disttype,
+                            ddfsnow_mu=pygem_prms.ddfsnow_mu, ddfsnow_sigma=pygem_prms.ddfsnow_sigma,
+                            ddfsnow_bndlow=pygem_prms.ddfsnow_bndlow, ddfsnow_bndhigh=pygem_prms.ddfsnow_bndhigh,
+                            ddfsnow_start=pygem_prms.ddfsnow_start,
+                            iterations=10, mcmc_burn_no=pygem_prms.mcmc_burn_no, thin=pygem_prms.thin_interval, 
+                            tune_interval=1000, step=None, tune_throughout=True, save_interval=None, 
+                            burn_till_tuned=False, stop_tuning_after=5,
+                            verbose=0, progress_bar=args.progress_bar, dbname=None,
+                            use_potentials=True, mb_max_loss=None):
                     """
                     Runs the MCMC algorithm.
 
@@ -1629,14 +1627,14 @@ def main(list_packed_vars):
                         # Temperature using gcm and glacier lapse rates
                         #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tempchange
                         T_minelev = (glacier_gcm_temp + glacier_gcm_lr *
-                                     (glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale] - glacier_gcm_elev) +
-                                     glacier_gcm_lr * 
-                                     (min_elev - glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale]) +
-                                     modelprms['tbias'])
+                                    (glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale] - glacier_gcm_elev) +
+                                    glacier_gcm_lr * 
+                                    (min_elev - glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale]) +
+                                    modelprms['tbias'])
                         # Precipitation using precipitation factor and precipitation gradient
                         #  P_bin = P_gcm * prec_factor * (1 + prec_grad * (z_bin - z_ref))
                         P_minelev = (glacier_gcm_prec * modelprms['kp'] * (1 + modelprms['precgrad'] * (min_elev -
-                                     glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale])))
+                                    glacier_rgi_table.loc[pygem_prms.option_elev_ref_downscale])))
                         # Accumulation using tsnow_threshold
                         Acc_minelev = np.zeros(P_minelev.shape)
                         Acc_minelev[T_minelev <= modelprms['tsnow_threshold']] = (
@@ -1712,7 +1710,7 @@ def main(list_packed_vars):
                         priors_dict['tbias_sigma'] = tbias_sigma
                     elif tbias_disttype =='truncnormal':
                         tbias = pymc.TruncatedNormal('tbias', mu=tbias_mu, tau=1/(tbias_sigma**2),
-                                                     a=tbias_bndlow, b=tbias_bndhigh, value=tbias_start)
+                                                    a=tbias_bndlow, b=tbias_bndhigh, value=tbias_start)
                         priors_dict['tbias_mu'] = tbias_mu
                         priors_dict['tbias_sigma'] = tbias_sigma
                         priors_dict['tbias_bndlow'] = tbias_bndlow
@@ -1727,14 +1725,14 @@ def main(list_packed_vars):
                     #  0.0015 (Braithwaite, 2008), since it's based on data; uniform should only be used for testing
                     if ddfsnow_disttype == 'truncnormal':
                         ddfsnow = pymc.TruncatedNormal('ddfsnow', mu=ddfsnow_mu, tau=1/(ddfsnow_sigma**2),
-                                                       a=ddfsnow_bndlow, b=ddfsnow_bndhigh, value=ddfsnow_start)
+                                                      a=ddfsnow_bndlow, b=ddfsnow_bndhigh, value=ddfsnow_start)
                         priors_dict['ddfsnow_mu'] = ddfsnow_mu
                         priors_dict['ddfsnow_sigma'] = ddfsnow_sigma
                         priors_dict['ddfsnow_bndlow'] = ddfsnow_bndlow
                         priors_dict['ddfsnow_bndhigh'] = ddfsnow_bndhigh
                     elif ddfsnow_disttype == 'uniform':
                         ddfsnow = pymc.Uniform('ddfsnow', lower=ddfsnow_bndlow, upper=ddfsnow_bndhigh,
-                                               value=ddfsnow_start)
+                                              value=ddfsnow_start)
                         priors_dict['ddfsnow_bndlow'] = ddfsnow_bndlow
                         priors_dict['ddfsnow_bndhigh'] = ddfsnow_bndhigh
 
@@ -1793,10 +1791,10 @@ def main(list_packed_vars):
                     # Set model
                     if use_potentials:
                         model = pymc.MCMC([{'kp':kp, 'tbias':tbias, 'ddfsnow':ddfsnow,
-                                           'massbal':massbal, 'obs_massbal':obs_massbal}, mb_max, must_melt])
+                                          'massbal':massbal, 'obs_massbal':obs_massbal}, mb_max, must_melt])
                     else:
                         model = pymc.MCMC({'kp':kp, 'tbias':tbias, 'ddfsnow':ddfsnow,
-                                           'massbal':massbal, 'obs_massbal':obs_massbal})
+                                          'massbal':massbal, 'obs_massbal':obs_massbal})
 
                     
                     # Step method (if changed from default)
@@ -1811,8 +1809,8 @@ def main(list_packed_vars):
                     else:
                         progress_bar_switch = False
                     model.sample(iter=iterations, burn=mcmc_burn_no, thin=thin,
-                                 tune_interval=tune_interval, tune_throughout=tune_throughout,
-                                 save_interval=save_interval, verbose=verbose, progress_bar=progress_bar_switch)
+                                tune_interval=tune_interval, tune_throughout=tune_throughout,
+                                save_interval=save_interval, verbose=verbose, progress_bar=progress_bar_switch)
                     # Close database
                     model.db.close()
 
@@ -1908,7 +1906,7 @@ def main(list_packed_vars):
                             nbinyears_negmbclim, mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls=fls,
                                                                         return_tbias_mustmelt_wmb=True)
                             output_all = np.array([modelprms['tbias'], modelprms['kp'], modelprms['ddfsnow'], 
-                                                   mb_mwea, nbinyears_negmbclim])
+                                                  mb_mwea, nbinyears_negmbclim])
                             
                             # Tbias lower bound & high precipitation factor
                             modelprms['kp'] = stats.gamma.ppf(0.99, kp_gamma_alpha, scale=1/kp_gamma_beta)
@@ -1977,7 +1975,7 @@ def main(list_packed_vars):
                                 consensus_mass = glacier_rgi_table.Area * 1e6 * ice_thickness_constant * pygem_prms.density_ice
         
                             mb_max_loss = (-1 * consensus_mass / pygem_prms.density_water / gdir.rgi_area_m2 / 
-                                           (gdir.dates_table.shape[0] / 12))
+                                          (gdir.dates_table.shape[0] / 12))
                             
                             
                             if debug:
@@ -2007,7 +2005,7 @@ def main(list_packed_vars):
                             modelprms_export['kp'] = {chain_str  : list(model.trace('kp')[:])}
                             modelprms_export['ddfsnow'] = {chain_str : list(model.trace('ddfsnow')[:])}
                             modelprms_export['ddfice'] = {chain_str : list(model.trace('ddfsnow')[:] /
-                                                                       pygem_prms.ddfsnow_iceratio)}
+                                                                      pygem_prms.ddfsnow_iceratio)}
                             modelprms_export['mb_mwea'] = {chain_str : list(model.trace('massbal')[:])}
         
                         # Export model parameters
@@ -2122,10 +2120,10 @@ def main(list_packed_vars):
                     
                 
                 def single_param_optimizer(modelprms_subset, mb_obs_mwea, prm2opt=None,
-                                           kp_bnds=None, tbias_bnds=None, ddfsnow_bnds=None,
-                                           mb_mwea_threshold=0.005, debug=False):
+                                          kp_bnds=None, tbias_bnds=None, ddfsnow_bnds=None,
+                                          mb_mwea_threshold=0.005, debug=False):
                     assert prm2opt is not None, 'For single_param_optimizer you must specify parameter to optimize'
-               
+              
                     if prm2opt == 'kp':
                         prm_bndlow = kp_bnds[0]
                         prm_bndhigh = kp_bnds[1]
@@ -2262,7 +2260,7 @@ def main(list_packed_vars):
                     # Temperature at the lowest bin
                     #  T_bin = T_gcm + lr_gcm * (z_ref - z_gcm) + lr_glac * (z_bin - z_ref) + tbias
                     tbias_max_acc = (-1 * (gdir.historical_climate['temp'] + gdir.historical_climate['lr'] *
-                                     (fls[0].surface_h.min() - gdir.historical_climate['elev'])).max())
+                                    (fls[0].surface_h.min() - gdir.historical_climate['elev'])).max())
                     tbias_bndlow = tbias_max_acc
                     modelprms['tbias'] = tbias_bndlow
                     mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls=fls)
@@ -2376,7 +2374,7 @@ def main(list_packed_vars):
                     # Run the optimization
                     if run_opt:
                         modelprms_opt = minimize(objective, modelprms_init, method=pygem_prms.method_opt,
-                                                 bounds=modelprms_bnds, options={'ftol':ftol_opt, 'eps':eps_opt})
+                                                bounds=modelprms_bnds, options={'ftol':ftol_opt, 'eps':eps_opt})
                         # Record the optimized parameters
                         modelprms_subset = modelprms_opt.x
                     else:
@@ -2393,7 +2391,7 @@ def main(list_packed_vars):
                 tbias_bndhigh = 0
                 # Tbias lower bound based on no positive temperatures
                 tbias_bndlow = (-1 * (gdir.historical_climate['temp'] + gdir.historical_climate['lr'] *
-                                 (fls[0].surface_h.min() - gdir.historical_climate['elev'])).max())
+                                (fls[0].surface_h.min() - gdir.historical_climate['elev'])).max())
                 modelprms['tbias'] = tbias_bndlow
                 mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls=fls)
                 if debug:
@@ -2423,7 +2421,7 @@ def main(list_packed_vars):
                 # Constrain bounds of precipitation factor and temperature bias
                 mb_mwea = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls=fls)
                 nbinyears_negmbclim = mb_mwea_calc(gdir, modelprms, glacier_rgi_table, fls=fls,
-                                                   return_tbias_mustmelt=True)
+                                                  return_tbias_mustmelt=True)
 
                 if debug:
                     print('\ntbias:', np.round(modelprms['tbias'],2), 'kp:', np.round(modelprms['kp'],2),
@@ -2499,7 +2497,7 @@ def main(list_packed_vars):
                     
                 # Run optimization
                 modelparams_opt, mb_mwea = run_objective(modelprms_subset, mb_obs_mwea, 
-                                                         modelprms_bnds=modelprms_bnds, ftol_opt=1e-3)
+                                                        modelprms_bnds=modelprms_bnds, ftol_opt=1e-3)
 
                 kp_opt = modelparams_opt['kp']
                 tbias_opt = modelparams_opt['tbias']
@@ -2608,58 +2606,58 @@ if __name__ == '__main__':
     print('Total processing time:', time.time()-time_start, 's')
 
 
-#%% ===== PLOTTING AND PROCESSING FOR MODEL DEVELOPMENT =====
-    # Place local variables in variable explorer
-    if args.option_parallels == 0:
-        main_vars_list = list(main_vars.keys())
-        gcm_name = main_vars['gcm_name']
-        main_glac_rgi = main_vars['main_glac_rgi']
-        if pygem_prms.hyps_data in ['Huss', 'Farinotti']:
-            main_glac_hyps = main_vars['main_glac_hyps']
-            main_glac_icethickness = main_vars['main_glac_icethickness']
-            main_glac_width = main_vars['main_glac_width']
-        dates_table = main_vars['dates_table']
-        gcm_temp = main_vars['gcm_temp']
-        gcm_tempstd = main_vars['gcm_tempstd']
-        gcm_prec = main_vars['gcm_prec']
-        gcm_elev = main_vars['gcm_elev']
-        gcm_lr = main_vars['gcm_lr']
-        gcm_temp_lrglac = main_vars['gcm_lr']
-#        output_ds_all_stats = main_vars['output_ds_all_stats']
-#        modelprms = main_vars['modelprms']
-        glacier_rgi_table = main_vars['glacier_rgi_table']
-        glacier_str = main_vars['glacier_str']
-        if pygem_prms.hyps_data in ['OGGM']:
-            gdir = main_vars['gdir']
-            fls = main_vars['fls']
-            elev_bins = fls[0].surface_h
-#            icethickness_initial = fls[0].thick
-            width_initial = fls[0].widths_m / 1000
-            glacier_area_initial = width_initial * fls[0].dx / 1000
-#            mbmod = main_vars['mbmod']
-            if pygem_prms.use_calibrated_modelparams:
-                modelprms_dict = main_vars['modelprms_dict']
-#            model = main_vars['model']
+# #%% ===== PLOTTING AND PROCESSING FOR MODEL DEVELOPMENT =====
+#     # Place local variables in variable explorer
+#     if args.option_parallels == 0:
+#         main_vars_list = list(main_vars.keys())
+#         gcm_name = main_vars['gcm_name']
+#         main_glac_rgi = main_vars['main_glac_rgi']
+#         if pygem_prms.hyps_data in ['Huss', 'Farinotti']:
+#             main_glac_hyps = main_vars['main_glac_hyps']
+#             main_glac_icethickness = main_vars['main_glac_icethickness']
+#             main_glac_width = main_vars['main_glac_width']
+#         dates_table = main_vars['dates_table']
+#         gcm_temp = main_vars['gcm_temp']
+#         gcm_tempstd = main_vars['gcm_tempstd']
+#         gcm_prec = main_vars['gcm_prec']
+#         gcm_elev = main_vars['gcm_elev']
+#         gcm_lr = main_vars['gcm_lr']
+#         gcm_temp_lrglac = main_vars['gcm_lr']
+#         glacier_rgi_table = main_vars['glacier_rgi_table']
+#         glacier_str = main_vars['glacier_str']
+#         if pygem_prms.hyps_data in ['OGGM']:
+#             gdir = main_vars['gdir']
+#             fls = main_vars['fls']
+#             elev_bins = fls[0].surface_h
+#             width_initial = fls[0].widths_m / 1000
+#             glacier_area_initial = width_initial * fls[0].dx / 1000
+#             if pygem_prms.use_calibrated_modelparams:
+#                 modelprms_dict = main_vars['modelprms_dict']
 
-#%%
-#from scipy.stats import median_abs_deviation
-#print('obs:', modelprms_dict['MCMC']['mb_obs_mwea'])
-#print('\nEmulator:')
-#print(np.mean(modelprms_dict['MCMC']['mb_mwea']['chain_0']))
-#print(np.round(np.median(modelprms_dict['MCMC']['mb_mwea']['chain_0']),3), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC']['mb_mwea']['chain_0']),3))
-#print(np.round(np.median(modelprms_dict['MCMC']['tbias']['chain_0']),3), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC']['tbias']['chain_0']),3))
-#print(np.round(np.median(modelprms_dict['MCMC']['kp']['chain_0']),3), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC']['kp']['chain_0']),3))
-#print(np.round(np.median(modelprms_dict['MCMC']['ddfsnow']['chain_0']),6), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC']['ddfsnow']['chain_0']),6))
-#print('\nFull sim:')
-#print(np.round(np.median(modelprms_dict['MCMC_fullsim']['mb_mwea']['chain_0']),3), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['mb_mwea']['chain_0']),3))
-#print(np.round(np.median(modelprms_dict['MCMC_fullsim']['tbias']['chain_0']),3), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['tbias']['chain_0']),3))
-#print(np.round(np.median(modelprms_dict['MCMC_fullsim']['kp']['chain_0']),3), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['kp']['chain_0']),3))
-#print(np.round(np.median(modelprms_dict['MCMC_fullsim']['ddfsnow']['chain_0']),6), 
-#      np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['ddfsnow']['chain_0']),6))
+# from scipy.stats import median_abs_deviation
+# modelprms_fullfn = '/Users/drounce/Documents/HiMAT/Output/calibration/01/1.01390-modelprms_dict.pkl'
+# with open(modelprms_fullfn, 'rb') as f:
+#     modelprms_dict = pickle.load(f)
+# print(modelprms_dict['MCMC']['mb_obs_mwea'])
+# #%%
+# print(modelprms_dict[pygem_prms.option_calibration][‘kp’])
+# print('obs:', modelprms_dict['MCMC']['mb_obs_mwea'])
+# print('\nEmulator:')
+# print(np.mean(modelprms_dict['MCMC']['mb_mwea']['chain_0']))
+# print(np.round(np.median(modelprms_dict['MCMC']['mb_mwea']['chain_0']),3), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC']['mb_mwea']['chain_0']),3))
+# print(np.round(np.median(modelprms_dict['MCMC']['tbias']['chain_0']),3), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC']['tbias']['chain_0']),3))
+# print(np.round(np.median(modelprms_dict['MCMC']['kp']['chain_0']),3), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC']['kp']['chain_0']),3))
+# print(np.round(np.median(modelprms_dict['MCMC']['ddfsnow']['chain_0']),6), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC']['ddfsnow']['chain_0']),6))
+# print('\nFull sim:')
+# print(np.round(np.median(modelprms_dict['MCMC_fullsim']['mb_mwea']['chain_0']),3), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['mb_mwea']['chain_0']),3))
+# print(np.round(np.median(modelprms_dict['MCMC_fullsim']['tbias']['chain_0']),3), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['tbias']['chain_0']),3))
+# print(np.round(np.median(modelprms_dict['MCMC_fullsim']['kp']['chain_0']),3), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['kp']['chain_0']),3))
+# print(np.round(np.median(modelprms_dict['MCMC_fullsim']['ddfsnow']['chain_0']),6), 
+#       np.round(median_abs_deviation(modelprms_dict['MCMC_fullsim']['ddfsnow']['chain_0']),6))

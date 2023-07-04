@@ -5,19 +5,9 @@ Loop through run simulation script
 """
 from subprocess import call
 
-#region = [15]
-# GCMs and RCP/SSP scenarios
-#gcm_names = ['CanESM2', 'CCSM4', 'CNRM-CM5', 'CSIRO-Mk3-6-0', 'GFDL-CM3', 
-#             'GFDL-ESM2M', 'GISS-E2-R', 'IPSL-CM5A-LR', 'MPI-ESM-LR', 'NorESM1-M']
-#rcps = ['rcp26', 'rcp45', 'rcp85']
-
 gcm_names = ['BCC-CSM2-MR', 'CESM2', 'CESM2-WACCM', 'EC-Earth3', 'EC-Earth3-Veg', 'FGOALS-f3-L', 
              'GFDL-ESM4', 'INM-CM4-8', 'INM-CM5-0', 'MPI-ESM1-2-HR', 'MRI-ESM2-0', 'NorESM2-MM']
 rcps = ['ssp126', 'ssp245', 'ssp370', 'ssp585']
-#rcps = ['ssp245']
-
-#gcm_names = ['EC-Earth3', 'EC-Earth3-Veg', 'GFDL-ESM4', 'MRI-ESM2-0']
-#rcps = ['ssp119']
 
 #%% Using input file
 for gcm in gcm_names:
@@ -31,8 +21,6 @@ for gcm in gcm_names:
         call_list.append("-scenario={}".format(rcp))
         call_list.append('-option_parallels=0')
         
-#        print(call_list)
-
         # Run script
         call(call_list)
         

@@ -433,19 +433,19 @@ if option_process_nsidc_regional:
         ds.Scenario.attrs[atr_name] = scenario_dict[atr_name]
 
     # Mass attributes
-    ds.reg_mass_annual.attrs['long_Name'] = 'Glacier mass'
+    ds.reg_mass_annual.attrs['long_name'] = 'Glacier mass'
     ds.reg_mass_annual.attrs['temporal_resolution'] = 'annual'
-    ds.reg_mass_annual.attrs['unit'] = 'kg'
+    ds.reg_mass_annual.attrs['units'] = 'kg'
     ds.reg_mass_annual.attrs['comment'] = 'mass of ice based on area and ice thickness at start of the year and density of ice of 900 kg/m3'
     # Mass below sea level attributes
     ds.reg_mass_bsl_annual.attrs['long_name'] = 'Glacier mass below sea level'
     ds.reg_mass_bsl_annual.attrs['temporal_resolution'] = 'annual'
-    ds.reg_mass_bsl_annual.attrs['unit'] = 'kg'
+    ds.reg_mass_bsl_annual.attrs['units'] = 'kg'
     ds.reg_mass_bsl_annual.attrs['comment'] = 'mass of ice below sea level based on area and ice thickness at start of the year, density of ice of 900 kg/m3, and sea level of 0 m a.s.l.'
     # Area attributes
     ds.reg_area_annual.attrs['long_name'] = 'Glacier area'
     ds.reg_area_annual.attrs['temporal_resolution'] = 'annual'
-    ds.reg_area_annual.attrs['unit'] = 'm2'
+    ds.reg_area_annual.attrs['units'] = 'm2'
     ds.reg_area_annual.attrs['comment'] = 'area at start of the year'
     # Melt attributes
     ds.reg_melt_monthly.attrs['long_name'] = 'Glacier melt'
@@ -2421,8 +2421,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Mass attributes
-                        ds.glac_mass_annual.attrs['long_Name'] = 'Glacier mass'
-                        ds.glac_mass_annual.attrs['unit'] = 'kg'
+                        ds.glac_mass_annual.attrs['long_name'] = 'Glacier mass'
+                        ds.glac_mass_annual.attrs['units'] = 'kg'
                         ds.glac_mass_annual.attrs['temporal_resolution'] = 'annual'
                         ds.glac_mass_annual.attrs['comment'] = 'mass of ice based on area and ice thickness at start of the year'
                         
@@ -2517,8 +2517,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Mass mad attributes
-                        ds.glac_mass_annual_mad.attrs['long_Name'] = 'Glacier mass median absolute deviation'
-                        ds.glac_mass_annual_mad.attrs['unit'] = 'kg'
+                        ds.glac_mass_annual_mad.attrs['long_name'] = 'Glacier mass median absolute deviation'
+                        ds.glac_mass_annual_mad.attrs['units'] = 'kg'
                         ds.glac_mass_annual_mad.attrs['temporal_resolution'] = 'annual'
                         ds.glac_mass_annual_mad.attrs['comment'] = 'mass of ice based on area and ice thickness at start of the year'
                         
@@ -2613,8 +2613,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Mass attributes
-                        ds.glac_mass_bsl_annual.attrs['long_Name'] = 'Glacier mass below sea level'
-                        ds.glac_mass_bsl_annual.attrs['unit'] = 'kg'
+                        ds.glac_mass_bsl_annual.attrs['long_name'] = 'Glacier mass below sea level'
+                        ds.glac_mass_bsl_annual.attrs['units'] = 'kg'
                         ds.glac_mass_bsl_annual.attrs['temporal_resolution'] = 'annual'
                         ds.glac_mass_bsl_annual.attrs['comment'] = 'mass of ice based on area and ice thickness at start of the year'
                         
@@ -2709,8 +2709,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Mass attributes
-                        ds.glac_mass_bsl_annual_mad.attrs['long_Name'] = 'Glacier mass below sea level median absolute deviation'
-                        ds.glac_mass_bsl_annual_mad.attrs['unit'] = 'kg'
+                        ds.glac_mass_bsl_annual_mad.attrs['long_name'] = 'Glacier mass below sea level median absolute deviation'
+                        ds.glac_mass_bsl_annual_mad.attrs['units'] = 'kg'
                         ds.glac_mass_bsl_annual_mad.attrs['temporal_resolution'] = 'annual'
                         ds.glac_mass_bsl_annual_mad.attrs['comment'] = 'mass of ice based on area and ice thickness at start of the year'
                         
@@ -2805,8 +2805,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Area attributes
-                        ds.glac_area_annual.attrs['long_Name'] = 'Glacier area'
-                        ds.glac_area_annual.attrs['unit'] = 'm2'
+                        ds.glac_area_annual.attrs['long_name'] = 'Glacier area'
+                        ds.glac_area_annual.attrs['units'] = 'm2'
                         ds.glac_area_annual.attrs['temporal_resolution'] = 'annual'
                         ds.glac_area_annual.attrs['comment'] = 'area at start of the year'
                         
@@ -2900,8 +2900,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Area attributes
-                        ds.glac_area_annual_mad.attrs['long_Name'] = 'Glacier area median absolute deviation'
-                        ds.glac_area_annual_mad.attrs['unit'] = 'm2'
+                        ds.glac_area_annual_mad.attrs['long_name'] = 'Glacier area median absolute deviation'
+                        ds.glac_area_annual_mad.attrs['units'] = 'm2'
                         ds.glac_area_annual_mad.attrs['temporal_resolution'] = 'annual'
                         ds.glac_area_annual_mad.attrs['comment'] = 'area at start of the year'
                         
@@ -2996,8 +2996,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Mass attributes
-                        ds.glac_runoff_monthly.attrs['long_Name'] = 'Glacier-wide runoff'
-                        ds.glac_runoff_monthly.attrs['unit'] = 'm3'
+                        ds.glac_runoff_monthly.attrs['long_name'] = 'Glacier-wide runoff'
+                        ds.glac_runoff_monthly.attrs['units'] = 'm3'
                         ds.glac_runoff_monthly.attrs['temporal_resolution'] = 'monthly'
                         ds.glac_runoff_monthly.attrs['comment'] = 'runoff from the glacier terminus, which moves over time'
                         
@@ -3091,8 +3091,8 @@ if option_process_nsidc_glaciers:
                                         )
                         
                         # Mass attributes
-                        ds.glac_runoff_monthly_mad.attrs['long_Name'] = 'Glacier-wide runoff median absolute deviation'
-                        ds.glac_runoff_monthly_mad.attrs['unit'] = 'm3'
+                        ds.glac_runoff_monthly_mad.attrs['long_name'] = 'Glacier-wide runoff median absolute deviation'
+                        ds.glac_runoff_monthly_mad.attrs['units'] = 'm3'
                         ds.glac_runoff_monthly_mad.attrs['temporal_resolution'] = 'monthly'
                         ds.glac_runoff_monthly_mad.attrs['comment'] = 'runoff from the glacier terminus, which moves over time'
                         
@@ -3254,16 +3254,16 @@ if option_process_nsidc_metadata_regional:
             
             ds2[ds_vn] = ds[ds_vn]
                 
-            # Correct long_Name to long_name
-            if 'long_Name' in list(ds2[ds_vn].attrs.keys()):
-                ds2[ds_vn].attrs['long_name'] = ds[ds_vn].attrs['long_Name']
-                del ds2[ds_vn].attrs['long_Name']
-                ds[ds_vn].attrs['long_name'] = ds[ds_vn].attrs['long_Name']
+            # Correct long_name to long_name
+            if 'long_name' in list(ds2[ds_vn].attrs.keys()):
+                ds2[ds_vn].attrs['long_name'] = ds[ds_vn].attrs['long_name']
+                del ds2[ds_vn].attrs['long_name']
+                ds[ds_vn].attrs['long_name'] = ds[ds_vn].attrs['long_name']
                 
-            # Correct 'unit' to 'units'
-            if 'unit' in list(ds2[ds_vn].attrs.keys()):
-                ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['unit']
-                del ds2[ds_vn].attrs['unit']
+            # Correct 'units' to 'units'
+            if 'units' in list(ds2[ds_vn].attrs.keys()):
+                ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['units']
+                del ds2[ds_vn].attrs['units']
                 
             # Reorder attributes
             del ds2[ds_vn].attrs['long_name']
@@ -3271,8 +3271,8 @@ if option_process_nsidc_metadata_regional:
             del ds2[ds_vn].attrs['temporal_resolution']
             ds2[ds_vn].attrs['temporal_resolution'] = ds[ds_vn].attrs['temporal_resolution']
             del ds2[ds_vn].attrs['units']
-            if 'unit' in list(ds[ds_vn].attrs.keys()):
-                ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['unit']
+            if 'units' in list(ds[ds_vn].attrs.keys()):
+                ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['units']
             elif 'units' in list(ds[ds_vn].attrs.keys()):
                 ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['units']
             if 'comment' in list(ds[ds_vn].attrs.keys()):
@@ -3473,13 +3473,13 @@ if option_process_nsidc_metadata:
                     ds_gridmap.crs.attrs['crs_wkt'] = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
                     ds2 = xr.merge([ds2, ds_gridmap])
 
-                    ds2[ds_vn].attrs['long_name'] = ds[ds_vn].attrs['long_Name']
-                    del ds2[ds_vn].attrs['long_Name']
+                    ds2[ds_vn].attrs['long_name'] = ds[ds_vn].attrs['long_name']
+                    del ds2[ds_vn].attrs['long_name']
                     del ds2[ds_vn].attrs['temporal_resolution']
                     ds2[ds_vn].attrs['temporal_resolution'] = ds[ds_vn].attrs['temporal_resolution']
-                    if 'unit' in list(ds2[ds_vn].attrs.keys()):
-                        del ds2[ds_vn].attrs['unit']
-                        ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['unit']
+                    if 'units' in list(ds2[ds_vn].attrs.keys()):
+                        del ds2[ds_vn].attrs['units']
+                        ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['units']
                     elif 'units' in list(ds2[ds_vn].attrs.keys()):
                         del ds2[ds_vn].attrs['units']
                         ds2[ds_vn].attrs['units'] = ds[ds_vn].attrs['units']
@@ -3621,7 +3621,7 @@ if option_process_nsidc_metadata_runoff_ultee:
                     
                     # Runoff attributes
                     ds2.glac_runoff_fixed_monthly.attrs['long_name'] = 'Glacier-wide runoff'
-                    ds2.glac_runoff_fixed_monthly.attrs['unit'] = 'm3'
+                    ds2.glac_runoff_fixed_monthly.attrs['units'] = 'm3'
                     ds2.glac_runoff_fixed_monthly.attrs['temporal_resolution'] = 'monthly'
                     ds2.glac_runoff_fixed_monthly.attrs['comment'] = 'runoff from a fixed-gauge at glacier terminus that does not move over time'
                     ds2.glac_runoff_fixed_monthly.attrs['grid_mapping'] = 'crs'
