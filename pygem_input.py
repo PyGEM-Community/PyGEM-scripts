@@ -4,8 +4,9 @@
 import os
 # External libraries
 import numpy as np
+import pandas as pd
 # Local libaries
-#from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
+from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
 #%% ===== MODEL SETUP DIRECTORY =====
@@ -23,7 +24,7 @@ rgi_regionsO2 = 'all'               # 2nd order region number (RGI V6.0)
 #                 (3) use one of the functions from  utils._funcs_selectglaciers
 rgi_glac_number = 'all'
 #rgi_glac_number = ['00001']
-#rgi_glac_number = glac_num_fromrange(1,48)
+# rgi_glac_number = glac_num_fromrange(1,20)
 
 glac_no_skip = None
 glac_no = None
@@ -34,11 +35,15 @@ glac_no = ['1.10689'] # Columbia Glacier
 if glac_no is not None:
     rgi_regionsO1 = sorted(list(set([int(x.split('.')[0]) for x in glac_no])))
 
+# Filter for size of glaciers to include (km2)
+glacier_area_filter = 10
+
 # Types of glaciers to include (True) or exclude (False)
 include_landterm = True                # Switch to include land-terminating glaciers
 include_laketerm = True                # Switch to include lake-terminating glaciers
 include_tidewater = True               # Switch to include marine-terminating glaciers
-ignore_calving = False                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
+# Temporarily need to treat tidewater glaciers as land-terminating due to updates in OGGM that need to be resolved
+ignore_calving = True                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
 
 oggm_base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/'
 logging_level = 'WORKFLOW' # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
@@ -46,6 +51,8 @@ oggm_border = 240 # 10, 80, 160, 240 (recommend 240 if expecting glaciers for lo
 
 #%% ===== CLIMATE DATA AND TIME PERIODS ===== 
 # Reference period runs (reference period refers to the calibration period)
+#   This will typically vary between 1981-2019 and 2000-2019 depending on the 
+#   reference time period chosen.
 ref_gcm_name = 'ERA5'               # reference climate dataset
 ref_startyear = 2000                # first year of model run (reference dataset)
 ref_endyear = 2019                  # last year of model run (reference dataset)
@@ -54,7 +61,8 @@ ref_spinupyears = 0                 # spin up years
 if ref_spinupyears > 0:
     assert 0==1, 'Code needs to be tested to ensure spinup years are correctly accounted for in output files'
 
-# Simulation runs (refers to period of simulation and needed separately from reference year to account for bias adjustments)
+# Full GCM period. This includes both the period of time used for bias-correction (e.g., 1981-2019) 
+#   and for the simulation run (e.g., 2000-2100).
 gcm_startyear = 2000            # first year of model run (simulation dataset)
 gcm_endyear = 2100              # last year of model run (simulation dataset)
 gcm_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
@@ -62,6 +70,14 @@ gcm_spinupyears = 0             # spin up years for simulation (output not set u
 constantarea_years = 0          # number of years to not let the area or volume change
 if gcm_spinupyears > 0:
     assert 0==1, 'Code needs to be tested to enure spinup years are correctly accounted for in output files'
+
+# Bias corrected years used for simulation runs. This is the period of time when PyGEM
+#   will actually simulate glacier evolution using the additive (temperature) and 
+#   multiplicative (precip) values calculated using the bias-correction period.
+gcm_bc_startyear = 2000         # first year of bias-correction (simulation dataset)
+gcm_bc_endyear = 2100           # last year of bias-correction (simulation dataset)
+gcm_bc_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
+gcm_bc_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
 
 # Hindcast option (flips array so 1960-2000 would run 2000-1960 ensuring that glacier area at 2000 is correct)
 hindcast = False                # True: run hindcast simulation, False: do not
@@ -181,6 +197,7 @@ elif option_calibration in ['MCMC', 'MCMC_fullsim']:
 hugonnet_fp = main_directory + '/../DEMs/Hugonnet2020/'
 #hugonnet_fn = 'df_pergla_global_20yr-filled.csv'
 hugonnet_fn = 'df_pergla_global_20yr-filled-FAcorrected.csv'
+hugonnet_file = pd.read_csv(hugonnet_fp + hugonnet_fn)
 if '-filled' in hugonnet_fn:
     hugonnet_mb_cn = 'mb_mwea'
     hugonnet_mb_err_cn = 'mb_mwea_err'
@@ -210,7 +227,7 @@ option_dynamics = 'OGGM'
     
 # MCMC options
 if option_calibration == 'MCMC':
-    sim_iters = 1                  # number of simulations
+    sim_iters = 50                  # number of simulations
     sim_burn = 0                    # number of burn-in (if burn-in is done in MCMC sampling, then don't do here)
 else:
     sim_iters = 1                   # number of simulations
@@ -226,7 +243,7 @@ export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
 
-# Bias adjustment option (0: no adjustment, 1: new prec scheme and temp building on HH2015, 2: HH2015 methods)
+# Bias adjustment option (0: no adjustment, 1: new prec scheme and temp building on HH2015, 2: HH2015 methods, 3: quantile delta mapping)
 option_bias_adjustment = 1
 
 # OGGM glacier dynamics parameters
@@ -234,7 +251,7 @@ if option_dynamics in ['OGGM', 'MassRedistributionCurves']:
     cfl_number = 0.02
     cfl_number_calving = 0.01
     glena_reg_fullfn = main_directory + '/../Output/calibration/glena_region.csv'
-    use_reg_glena = True
+    use_reg_glena = False
     if use_reg_glena:
         assert os.path.exists(glena_reg_fullfn), 'Regional glens a calibration file does not exist.'
     else:
@@ -337,6 +354,18 @@ cmip5_fp_fx_ending = '_r0i0p0_fx/'
 
 # CMIP6 (GCM data)
 cmip6_fp_prefix = main_directory + '/../climate_data/cmip6/'
+
+# CESM2 Large Ensemble (GCM data)
+cesm2_fp_var_prefix = main_directory + '/../climate_data/cesm2/'
+cesm2_fp_var_ending = '_mon/'
+cesm2_fp_fx_prefix = main_directory + '/../climate_data/cesm2/'
+cesm2_fp_fx_ending = '_fx/'
+
+# GFDL SPEAR Large Ensemble (GCM data)
+gfdl_fp_var_prefix = main_directory + '/../climate_data/gfdl/'
+gfdl_fp_var_ending = '_mon/'
+gfdl_fp_fx_prefix = main_directory + '/../climate_data/gfdl/'
+gfdl_fp_fx_ending = '_fx/'
 
 
 #%% ===== GLACIER DATA (RGI, ICE THICKNESS, ETC.) =====
