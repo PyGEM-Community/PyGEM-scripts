@@ -4,9 +4,8 @@
 import os
 # External libraries
 import numpy as np
-import pandas as pd
 # Local libaries
-from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
+# from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
 #%% ===== MODEL SETUP DIRECTORY =====
@@ -27,7 +26,7 @@ rgi_glac_number = 'all'
 # rgi_glac_number = glac_num_fromrange(1,20)
 
 glac_no_skip = None
-#glac_no = None
+# glac_no = None 
 glac_no = ['15.03733'] # Khumbu Glacier
 # glac_no = ['1.10689'] # Columbia Glacier
 # glac_no = ['1.03622'] # LeConte Glacier
@@ -35,24 +34,22 @@ glac_no = ['15.03733'] # Khumbu Glacier
 if glac_no is not None:
     rgi_regionsO1 = sorted(list(set([int(x.split('.')[0]) for x in glac_no])))
 
-# Filter for size of glaciers to include (km2)
-glacier_area_filter = 10
+
+min_glac_area_km2 = 0               # Filter for size of glaciers to include (km2). Set to 0 to include all.
 
 # Types of glaciers to include (True) or exclude (False)
 include_landterm = True                # Switch to include land-terminating glaciers
 include_laketerm = True                # Switch to include lake-terminating glaciers
 include_tidewater = True               # Switch to include marine-terminating glaciers
-# Temporarily need to treat tidewater glaciers as land-terminating due to updates in OGGM that need to be resolved
-ignore_calving = True                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
+ignore_calving = False                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
 
 oggm_base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/'
-logging_level = 'WORKFLOW' # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
-oggm_border = 240 # 10, 80, 160, 240 (recommend 240 if expecting glaciers for long runs where glaciers may grow)
+logging_level = 'WORKFLOW'             # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
+oggm_border = 240                      # 10, 80, 160, 240 (recommend 240 if expecting glaciers for long runs where glaciers may grow)
 
 #%% ===== CLIMATE DATA AND TIME PERIODS ===== 
 # Reference period runs (reference period refers to the calibration period)
-#   This will typically vary between 1981-2019 and 2000-2019 depending on the 
-#   reference time period chosen.
+#   This will typically vary between 1980-present
 ref_gcm_name = 'ERA5'               # reference climate dataset
 ref_startyear = 2000                # first year of model run (reference dataset)
 ref_endyear = 2019                  # last year of model run (reference dataset)
@@ -89,9 +86,6 @@ if hindcast:
 #%% ===== CALIBRATION OPTIONS =====
 # Calibration option ('emulator', 'MCMC', 'MCMC_fullsim' 'HH2015', 'HH2015mod')
 option_calibration = 'MCMC'
-# option_calibration = 'emulator'
-#option_calibration = 'MCMC_fullsim'
-# option_calibration = 'HH2015mod'
 
 # Prior distribution (specify filename or set equal to None)
 priors_reg_fullfn = main_directory + '/../Output/calibration/priors_region.csv'
@@ -197,7 +191,6 @@ elif option_calibration in ['MCMC', 'MCMC_fullsim']:
 hugonnet_fp = main_directory + '/../DEMs/Hugonnet2020/'
 #hugonnet_fn = 'df_pergla_global_20yr-filled.csv'
 hugonnet_fn = 'df_pergla_global_20yr-filled-FAcorrected.csv'
-hugonnet_file = pd.read_csv(hugonnet_fp + hugonnet_fn)
 if '-filled' in hugonnet_fn:
     hugonnet_mb_cn = 'mb_mwea'
     hugonnet_mb_err_cn = 'mb_mwea_err'
@@ -227,7 +220,7 @@ option_dynamics = 'OGGM'
     
 # MCMC options
 if option_calibration == 'MCMC':
-    sim_iters = 50                  # number of simulations
+    sim_iters = 1                  # number of simulations
     sim_burn = 0                    # number of burn-in (if burn-in is done in MCMC sampling, then don't do here)
 else:
     sim_iters = 1                   # number of simulations
@@ -251,7 +244,7 @@ if option_dynamics in ['OGGM', 'MassRedistributionCurves']:
     cfl_number = 0.02
     cfl_number_calving = 0.01
     glena_reg_fullfn = main_directory + '/../Output/calibration/glena_region.csv'
-    use_reg_glena = False
+    use_reg_glena = True
     if use_reg_glena:
         assert os.path.exists(glena_reg_fullfn), 'Regional glens a calibration file does not exist.'
     else:

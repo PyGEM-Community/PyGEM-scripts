@@ -2569,7 +2569,8 @@ if __name__ == '__main__':
         main_glac_rgi_all = modelsetup.selectglaciersrgitable(
                 rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
                 rgi_glac_number=pygem_prms.rgi_glac_number, include_landterm=pygem_prms.include_landterm,
-                include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater)
+                include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater, 
+                min_glac_area_km2=pygem_prms.min_glac_area_km2)
         glac_no = list(main_glac_rgi_all['rgino_str'].values)
 
     # Number of cores for parallel processing

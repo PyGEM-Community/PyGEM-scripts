@@ -1094,16 +1094,16 @@ def main(list_packed_vars):
         elif pygem_prms.option_bias_adjustment == 3:
             # Temperature bias correction
             gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_QDM(ref_temp, ref_elev, gcm_temp,
-                                                                        dates_table_ref, dates_table,
-                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+                                                                     dates_table_ref, dates_table,
+                                                                     ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                     gcm_spinupyears=pygem_prms.gcm_spinupyears)
 
 
             # Precipitation bias correction
             gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_QDM(ref_prec, ref_elev, gcm_prec,
-                                                                        dates_table_ref, dates_table,
-                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+                                                                     dates_table_ref, dates_table,
+                                                                     ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                     gcm_spinupyears=pygem_prms.gcm_spinupyears)
             
 
     # ===== OGGM TIME PERIOD =====
@@ -2015,7 +2015,8 @@ if __name__ == '__main__':
                 rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
                 rgi_glac_number=pygem_prms.rgi_glac_number, glac_no=pygem_prms.glac_no,
                 include_landterm=pygem_prms.include_landterm, include_laketerm=pygem_prms.include_laketerm, 
-                include_tidewater=pygem_prms.include_tidewater)
+                include_tidewater=pygem_prms.include_tidewater, 
+                min_glac_area_km2=pygem_prms.min_glac_area_km2)
         glac_no = list(main_glac_rgi_all['rgino_str'].values)
 
     # Number of cores for parallel processing
@@ -2048,8 +2049,6 @@ if __name__ == '__main__':
         with open(args.realization_list, 'r') as real_fn:
             real_list = real_fn.read().splitlines()
             print('Found %d realizations to process'%(len(real_list)))
-    else:
-        print('Zero realizations to run.')
  
     # Loop through all GCMs
     for gcm_name in gcm_list:
