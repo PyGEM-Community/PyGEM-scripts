@@ -3,11 +3,16 @@
 # Built-in libraries
 import argparse
 import os
+import sys
 # External libraries
 import numpy as np
 import pickle
 # Local libraries
-import pygem.pygem_input as pygem_prms
+try:
+    import pygem
+except:
+    sys.path.append(os.getcwd() + '/../PyGEM/')
+import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
 
 

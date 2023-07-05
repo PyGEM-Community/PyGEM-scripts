@@ -1251,8 +1251,6 @@ def main(list_packed_vars):
                         cfg.PARAMS['cfl_number'] = pygem_prms.cfl_number
                     else:
                         cfg.PARAMS['cfl_number'] = pygem_prms.cfl_number_calving
-#                        cfg.PARAMS['calving_k'] = calving_k
-#                        cfg.PARAMS['inversion_calving_k'] = calving_k
 
                     
                     if debug:
@@ -1398,7 +1396,7 @@ def main(list_packed_vars):
                                               hindcast=pygem_prms.hindcast,
                                               debug=pygem_prms.debug_mb,
                                               debug_refreeze=pygem_prms.debug_refreeze,
-                                              fls=nfls, option_areaconstant=True)
+                                              fls=nfls, option_areaconstant=False)
 
                     # Glacier dynamics model
                     if pygem_prms.option_dynamics == 'OGGM':
@@ -1960,8 +1958,9 @@ if __name__ == '__main__':
     else:
         main_glac_rgi_all = modelsetup.selectglaciersrgitable(
                 rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
-                rgi_glac_number=pygem_prms.rgi_glac_number, include_landterm=pygem_prms.include_landterm,
-                include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater)
+                rgi_glac_number=pygem_prms.rgi_glac_number, glac_no=pygem_prms.glac_no,
+                include_landterm=pygem_prms.include_landterm, include_laketerm=pygem_prms.include_laketerm, 
+                include_tidewater=pygem_prms.include_tidewater)
         glac_no = list(main_glac_rgi_all['rgino_str'].values)
 
     # Number of cores for parallel processing
