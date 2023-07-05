@@ -963,8 +963,7 @@ def main(list_packed_vars):
     count = list_packed_vars[0]
     glac_no = list_packed_vars[1]
     gcm_name = list_packed_vars[2]
-    if args.realization or args.realization_list is not None:
-        realization = list_packed_vars[3]
+    realization = list_packed_vars[3]
     if (gcm_name != pygem_prms.ref_gcm_name) and (args.scenario is None):
         scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
     elif not args.scenario is None:
@@ -992,10 +991,10 @@ def main(list_packed_vars):
         dates_table_ref = dates_table
     else:
         # GCM object
-        if args.realization or args.realization_list is not None:
-            gcm = class_climate.GCM(name=gcm_name, scenario=scenario, realization=realization)
-        else:
+        if realization is None:
             gcm = class_climate.GCM(name=gcm_name, scenario=scenario)
+        else:
+            gcm = class_climate.GCM(name=gcm_name, scenario=scenario, realization=realization)
         # Reference GCM
         ref_gcm = class_climate.GCM(name=pygem_prms.ref_gcm_name)
         # Adjust reference dates in event that reference is longer than GCM data
@@ -1870,7 +1869,7 @@ def main(list_packed_vars):
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
                                           str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
-                        elif args.realization or args.realization_list is not None:
+                        elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
@@ -1921,7 +1920,7 @@ def main(list_packed_vars):
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
                                           str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
-                        elif args.realization or args.realization_list is not None:
+                        elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
@@ -2042,13 +2041,19 @@ if __name__ == '__main__':
             scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
             print('Found %d gcms to process'%(len(gcm_list)))
   
-    realization = args.realization_list
+    # Read realizations from argument parser
     if args.realization is not None:
-        realization = args.realization
+        realizations = [args.realization]
     elif args.realization_list is not None:
         with open(args.realization_list, 'r') as real_fn:
-            real_list = real_fn.read().splitlines()
-            print('Found %d realizations to process'%(len(real_list)))
+            realizations = list(real_fn.read().splitlines())
+            print('Found %d realizations to process'%(len(realizations)))
+    else:
+        realizations = None
+    
+    # Producing realization or realization list. Best to convert them into the same format!
+    # Then pass this as a list or None.
+    # If passing this through the list_packed_vars, then don't go back and get from arg parser again!
  
     # Loop through all GCMs
     for gcm_name in gcm_list:
@@ -2057,17 +2062,14 @@ if __name__ == '__main__':
         elif not args.scenario is None:
             print('Processing:', gcm_name, scenario)
         # Pack variables for multiprocessing
-        list_packed_vars = []
-        if args.realization is not None:
-            for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append([count, glac_no_lst, gcm_name, realization])           
-        elif args.realization_list is not None:
-            for real in real_list:
+        list_packed_vars = []          
+        if realizations is not None:
+            for realization in realizations:
                 for count, glac_no_lst in enumerate(glac_no_lsts):
-                    list_packed_vars.append([count, glac_no_lst, gcm_name, real])
+                    list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
         else:
             for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append([count, glac_no_lst, gcm_name])
+                list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
                 
         print('len list packed vars:', len(list_packed_vars))
            
