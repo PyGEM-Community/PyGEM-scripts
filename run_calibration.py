@@ -2635,14 +2635,16 @@ if __name__ == '__main__':
 #             if pygem_prms.use_calibrated_modelparams:
 #                 modelprms_dict = main_vars['modelprms_dict']
 
-# #%%
-# # from scipy.stats import median_abs_deviation
+##%%
 # import pickle
+# fullfn = '/Users/drounce/Documents/HiMAT/R11_rgi_glac_number_1-1000glac_batch_0.pkl'
+# with open(fullfn, 'rb') as f:
+#     A = pickle.load(f)
 # modelprms_fullfn = '/Users/drounce/Documents/HiMAT/Output/1.01390-modelprms_dict.pkl'
 # with open(modelprms_fullfn, 'rb') as f:
 #     modelprms_dict = pickle.load(f)
 # print(modelprms_dict['MCMC']['mb_obs_mwea'])
-# #%%
+##%%
 # print(modelprms_dict[pygem_prms.option_calibration][‘kp’])
 # print('obs:', modelprms_dict['MCMC']['mb_obs_mwea'])
 # print('\nEmulator:')

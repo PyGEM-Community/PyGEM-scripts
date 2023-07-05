@@ -15,18 +15,17 @@ output_filepath = main_directory + '/../Output/'
 model_run_date = 'July 2 2023'
 
 #%% ===== GLACIER SELECTION =====
-rgi_regionsO1 = [1]                 # 1st order region number (RGI V6.0)
+rgi_regionsO1 = [15]                 # 1st order region number (RGI V6.0)
 rgi_regionsO2 = 'all'               # 2nd order region number (RGI V6.0)
 # RGI glacier number (RGI V6.0)
 #  Three options: (1) use glacier numbers for a given region (or 'all'), must have glac_no set to None
 #                 (2) glac_no is not None, e.g., ['1.00001', 13.0001'], overrides rgi_glac_number
 #                 (3) use one of the functions from  utils._funcs_selectglaciers
 rgi_glac_number = 'all'
-#rgi_glac_number = ['00001']
 # rgi_glac_number = glac_num_fromrange(1,20)
 
 glac_no_skip = None
-# glac_no = None 
+glac_no = None 
 glac_no = ['15.03733'] # Khumbu Glacier
 # glac_no = ['1.10689'] # Columbia Glacier
 # glac_no = ['1.03622'] # LeConte Glacier

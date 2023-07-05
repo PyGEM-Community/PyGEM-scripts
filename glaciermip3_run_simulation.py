@@ -212,16 +212,16 @@ def main(list_packed_vars):
     ref_startyear = 2000
     ref_endyear = 2019
     dates_table_ref = modelsetup.datesmodelrun(startyear=ref_startyear, endyear=ref_endyear,
-                                               spinupyears=pygem_prms.ref_spinupyears,
-                                               option_wateryear='calendar')
+                                                spinupyears=pygem_prms.ref_spinupyears,
+                                                option_wateryear='calendar')
     
     # Air temperature [degC], Precipitation [m], Elevation [masl], Lapse rate [K m-1]
     ref_temp_all, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.temp_fn, ref_gcm.temp_vn,
-                                                                         main_glac_rgi, dates_table_ref)
+                                                                          main_glac_rgi, dates_table_ref)
     ref_prec_all, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.prec_fn, ref_gcm.prec_vn,
-                                                                         main_glac_rgi, dates_table_ref)
+                                                                          main_glac_rgi, dates_table_ref)
     ref_lr_all, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.lr_fn, ref_gcm.lr_vn, 
-                                                                       main_glac_rgi, dates_table_ref)
+                                                                        main_glac_rgi, dates_table_ref)
     ref_elev_all = ref_gcm.importGCMfxnearestneighbor_xarray(ref_gcm.elev_fn, ref_gcm.elev_vn, main_glac_rgi)
     
     # ===== RUN MASS BALANCE =====
@@ -396,8 +396,8 @@ def main(list_packed_vars):
                     print('nyears:', nyears)
                 
                 #%%
-#                try:
-                for batman in [0]:
+                try:
+                # for batman in [0]:
     
                     # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
                     if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
@@ -417,18 +417,18 @@ def main(list_packed_vars):
                     gdir_ref = copy.deepcopy(gdir)
                     ref_tempstd = gcm_tempstd[:,0:dates_table_ref.shape[0]]
                     gdir_ref.historical_climate = {'elev': ref_elev[glac],
-                                               'temp': ref_temp[glac,:],
-                                               'tempstd': ref_tempstd[glac,:],
-                                               'prec': ref_prec[glac,:],
-                                               'lr': ref_lr[glac,:]}
+                                                'temp': ref_temp[glac,:],
+                                                'tempstd': ref_tempstd[glac,:],
+                                                'prec': ref_prec[glac,:],
+                                                'lr': ref_lr[glac,:]}
                     gdir_ref.dates_table = dates_table_ref
                     
                     # Add climate data to glacier directory
                     gdir.historical_climate = {'elev': gcm_elev[0],
-                                               'temp': gcm_temp[0,:],
-                                               'tempstd': gcm_tempstd[0,:],
-                                               'prec': gcm_prec[0,:],
-                                               'lr': gcm_lr[0,:]}
+                                                'temp': gcm_temp[0,:],
+                                                'tempstd': gcm_tempstd[0,:],
+                                                'prec': gcm_prec[0,:],
+                                                'lr': gcm_lr[0,:]}
         
         #            print(gdir.historical_climate['elev'].shape, gdir.historical_climate['elev'])
         #            print(gdir.historical_climate['temp'].shape)
@@ -568,11 +568,11 @@ def main(list_packed_vars):
                                       
                                 # Perform inversion based on PyGEM MB using reference directory
                                 mbmod_inv = PyGEMMassBalance(gdir_ref, modelprms, glacier_rgi_table,
-                                                             hindcast=pygem_prms.hindcast,
-                                                             debug=pygem_prms.debug_mb,
-                                                             debug_refreeze=pygem_prms.debug_refreeze,
-                                                             fls=fls, option_areaconstant=True,
-                                                             inversion_filter=inversion_filter)
+                                                              hindcast=pygem_prms.hindcast,
+                                                              debug=pygem_prms.debug_mb,
+                                                              debug_refreeze=pygem_prms.debug_refreeze,
+                                                              fls=fls, option_areaconstant=True,
+                                                              inversion_filter=inversion_filter)
 
         #                        if debug:
         #                            h, w = gdir.get_inversion_flowline_hw()
@@ -593,7 +593,7 @@ def main(list_packed_vars):
                                 # Tidewater glaciers
                                 else:
                                     out_calving = find_inversion_calving_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears_ref),
-                                                                                     glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)
+                                                                                      glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)
                                         
                                 # ----- INDENTED TO BE JUST WITH DYNAMICS -----
                                 tasks.init_present_time_glacier(gdir) # adds bins below
@@ -663,7 +663,7 @@ def main(list_packed_vars):
                                             print('\n\ndiag.calving_m3:', diag.calving_m3.values)
                                             print('calving_m3_since_y0:', ev_model.calving_m3_since_y0)
                                         calving_m3_annual = ((diag.calving_m3.values[1:] - diag.calving_m3.values[0:-1]) * 
-                                                             pygem_prms.density_ice / pygem_prms.density_water)
+                                                              pygem_prms.density_ice / pygem_prms.density_water)
                                         for n in np.arange(calving_m3_annual.shape[0]):
                                             ev_model.mb_model.glac_wide_frontalablation[12*n+11] = calving_m3_annual[n]
         
@@ -795,7 +795,7 @@ def main(list_packed_vars):
                             # Record output for successful runs
                             if successful_run:
                                 
-                                print('success')
+                                # print('success')
                                 
                                 if not pygem_prms.option_dynamics is None:
                                     if debug:
@@ -883,21 +883,20 @@ def main(list_packed_vars):
                                 }
                                 
                                 sim_fp = pygem_prms.output_filepath + 'simulations/' + reg_str + '/' + gcm_name + '/' + period + '/'
-                                print(sim_fp)
                                 if not os.path.exists(sim_fp):
                                     os.makedirs(sim_fp, exist_ok=True)
                                 
                                 ds.to_netcdf(sim_fp + filename, encoding=encoding)
                                                     
-                    print('\n\nADD BACK IN EXCEPTION\n\n')
-#                except:
-#                    # LOG FAILURE
-#                    fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/' + period + '/'
-#                    if not os.path.exists(fail_fp):
-#                        os.makedirs(fail_fp, exist_ok=True)
-#                    txt_fn_fail = glacier_str + "-sim_failed.txt"
-#                    with open(fail_fp + txt_fn_fail, "w") as text_file:
-#                        text_file.write(glacier_str + ' failed to complete simulation')
+                    # print('\n\nADD BACK IN EXCEPTION\n\n')
+                except:
+                    # LOG FAILURE
+                    fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/' + period + '/'
+                    if not os.path.exists(fail_fp):
+                        os.makedirs(fail_fp, exist_ok=True)
+                    txt_fn_fail = glacier_str + "-sim_failed.txt"
+                    with open(fail_fp + txt_fn_fail, "w") as text_file:
+                        text_file.write(glacier_str + ' failed to complete simulation')
 
     # Global variables for Spyder development
     if args.option_parallels == 0:

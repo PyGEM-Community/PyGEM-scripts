@@ -1136,8 +1136,8 @@ def main(list_packed_vars):
         reg_str = str(glacier_rgi_table.O1Region).zfill(2)
         rgiid = main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId']
 
-#        try:
-        for batman in [0]:
+        try:
+        # for batman in [0]:
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
@@ -1970,23 +1970,23 @@ def main(list_packed_vars):
     #                    output_ds_essential_sims.close()
                     
                     
-        print('\n\nADD BACK IN EXCEPTION\n\n')
+        # print('\n\nADD BACK IN EXCEPTION\n\n')
         
-#        except:
-#            # LOG FAILURE
-#            fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'
-#            if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-#                fail_fp += scenario + '/'
-#            if not os.path.exists(fail_fp):
-#                os.makedirs(fail_fp, exist_ok=True)
-#            txt_fn_fail = glacier_str + "-sim_failed.txt"
-#            with open(fail_fp + txt_fn_fail, "w") as text_file:
-#                text_file.write(glacier_str + ' failed to complete simulation')
+        except:
+            # LOG FAILURE
+            fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'
+            if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+                fail_fp += scenario + '/'
+            if not os.path.exists(fail_fp):
+                os.makedirs(fail_fp, exist_ok=True)
+            txt_fn_fail = glacier_str + "-sim_failed.txt"
+            with open(fail_fp + txt_fn_fail, "w") as text_file:
+                text_file.write(glacier_str + ' failed to complete simulation')
 
-    # # Global variables for Spyder development
-    # if args.option_parallels == 0:
-    #     global main_vars
-    #     main_vars = inspect.currentframe().f_locals
+    # Global variables for Spyder development
+    if args.option_parallels == 0:
+        global main_vars
+        main_vars = inspect.currentframe().f_locals
 
 
 #%% PARALLEL PROCESSING
@@ -2069,7 +2069,7 @@ if __name__ == '__main__':
                     list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
         else:
             for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
+                list_packed_vars.append([count, glac_no_lst, gcm_name, realizations])
                 
         print('len list packed vars:', len(list_packed_vars))
            
