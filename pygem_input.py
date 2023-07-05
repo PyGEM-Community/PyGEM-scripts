@@ -13,7 +13,7 @@ from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromra
 main_directory = os.getcwd()
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = 'July 3 2023'
+model_run_date = 'July 2 2023'
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [1]                 # 1st order region number (RGI V6.0)
@@ -27,11 +27,10 @@ rgi_glac_number = 'all'
 # rgi_glac_number = glac_num_fromrange(1,20)
 
 glac_no_skip = None
-# glac_no = None
-# glac_no = ['15.03733']
-glac_no = ['1.26736']
-# glac_no = ['1.10325', '1.10689', '1.12683', '1.14879', '1.17843', '1.20783', '1.21008', '1.23565', 
-            # '1.23635', '1.23643', '1.23672', '1.26736', '1.27102']
+glac_no = None
+# glac_no = ['15.03733'] # Khumbu Glacier
+glac_no = ['1.10689'] # Columbia Glacier
+# glac_no = ['1.03622'] # LeConte Glacier
 
 if glac_no is not None:
     rgi_regionsO1 = sorted(list(set([int(x.split('.')[0]) for x in glac_no])))
@@ -47,9 +46,8 @@ include_tidewater = True               # Switch to include marine-terminating gl
 ignore_calving = True                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
 
 oggm_base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/'
-# oggm_base_url = 'https://cluster.klima.uni-bremen.de/~fmaussion/gdirs/prepro_l2_202010/elevbands_fl_with_consensus'
-# oggm_base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.4/L1-L2_files/elev_bands/'
-logging_level = 'DEBUG' # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
+logging_level = 'WORKFLOW' # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
+oggm_border = 240 # 10, 80, 160, 240 (recommend 240 if expecting glaciers for long runs where glaciers may grow)
 
 #%% ===== CLIMATE DATA AND TIME PERIODS ===== 
 # Reference period runs (reference period refers to the calibration period)
@@ -93,9 +91,7 @@ if hindcast:
 option_calibration = 'MCMC'
 # option_calibration = 'emulator'
 #option_calibration = 'MCMC_fullsim'
-# option_calibration = 'HH2015'
-#option_calibration = 'HH2015mod'
-
+# option_calibration = 'HH2015mod'
 
 # Prior distribution (specify filename or set equal to None)
 priors_reg_fullfn = main_directory + '/../Output/calibration/priors_region.csv'
@@ -243,7 +239,7 @@ sim_stat_cns = ['median', 'mad']
 
 # Output options
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
-export_binned_thickness = False      # Export binned ice thickness
+export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
 
@@ -335,14 +331,12 @@ elif option_refreezing == 'HH2015':
 # ERA5 (default reference climate data)
 if ref_gcm_name == 'ERA5':
     era5_fp = main_directory + '/../climate_data/ERA5/'
-    era5_temp_fn = 'ERA5_temp_monthly_1979_2023.nc'
+    era5_temp_fn = 'ERA5_temp_monthly.nc'
     era5_tempstd_fn = 'ERA5_tempstd_monthly.nc'
-    era5_prec_fn = 'ERA5_totalprecip_monthly_1979_2023.nc'
+    era5_prec_fn = 'ERA5_totalprecip_monthly.nc'
     era5_elev_fn = 'ERA5_geopotential.nc'
-#    era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly.nc'
-#    era5_lr_fn = 'ERA5_lapserates_monthly.nc'
     era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly_2020_2023.nc'
-    era5_lr_fn = 'ERA5_lapserates_monthly_1979_2023.nc'
+    era5_lr_fn = 'ERA5_lapserates_monthly.nc'
     assert os.path.exists(era5_fp), 'ERA5 filepath does not exist'
     assert os.path.exists(era5_fp + era5_temp_fn), 'ERA5 temperature filepath does not exist'
     assert os.path.exists(era5_fp + era5_prec_fn), 'ERA5 precipitation filepath does not exist'
@@ -399,7 +393,8 @@ hyps_data = 'OGGM'      # Hypsometry dataset (OGGM; Maussion etal 2019)
 # Hypsometry data pre-processed by OGGM
 if hyps_data == 'OGGM':
     oggm_gdir_fp = main_directory + '/../oggm_gdirs/'
-    overwrite_gdirs = False
+    overwrite_gdirs = True
+    has_internet = True
 
 # Debris datasets
 if include_debris:
