@@ -108,6 +108,10 @@ def getparser():
                         help='realization from large ensemble used for model run (ex. 1011.001 or 1301.020)')
     parser.add_argument('-realization_list', action='store', type=str, default=None,
                         help='text file full of realizations to run')
+    parser.add_argument('-gcm_bc_startyear', action='store', type=int, default=pygem_prms.gcm_bc_startyear,
+                        help='start year for bias correction')
+    parser.add_argument('-gcm_bc_endyear', action='store', type=int, default=pygem_prms.gcm_bc_endyear,
+                        help='start year for bias correction')
     parser.add_argument('-gcm_startyear', action='store', type=int, default=pygem_prms.gcm_startyear,
                         help='start year for the model run')
     parser.add_argument('-gcm_endyear', action='store', type=int, default=pygem_prms.gcm_endyear,
@@ -981,8 +985,8 @@ def main(list_packed_vars):
     
     # ===== TIME PERIOD =====
     dates_table = modelsetup.datesmodelrun(
-            startyear=args.gcm_startyear, endyear=args.gcm_endyear, spinupyears=pygem_prms.gcm_spinupyears,
-            option_wateryear=pygem_prms.gcm_wateryear)
+            startyear=args.gcm_bc_startyear, endyear=args.gcm_bc_endyear, spinupyears=pygem_prms.gcm_bc_spinupyears,
+            option_wateryear=pygem_prms.gcm_bc_wateryear)
     
     # ===== LOAD CLIMATE DATA =====
     # Climate class
@@ -998,14 +1002,14 @@ def main(list_packed_vars):
         # Reference GCM
         ref_gcm = class_climate.GCM(name=pygem_prms.ref_gcm_name)
         # Adjust reference dates in event that reference is longer than GCM data
-        if pygem_prms.ref_startyear >= args.gcm_startyear:
+        if pygem_prms.ref_startyear >= args.gcm_bc_startyear:
             ref_startyear = pygem_prms.ref_startyear
         else:
-            ref_startyear = args.gcm_startyear
-        if pygem_prms.ref_endyear <= args.gcm_endyear:
+            ref_startyear = args.gcm_bc_startyear
+        if pygem_prms.ref_endyear <= args.gcm_bc_endyear:
             ref_endyear = pygem_prms.ref_endyear
         else:
-            ref_endyear = args.gcm_endyear
+            ref_endyear = args.gcm_bc_endyear
         dates_table_ref = modelsetup.datesmodelrun(startyear=ref_startyear, endyear=ref_endyear,
                                                    spinupyears=pygem_prms.ref_spinupyears,
                                                    option_wateryear=pygem_prms.ref_wateryear)
@@ -1109,8 +1113,8 @@ def main(list_packed_vars):
     # reload dates_table for new time period that does not include previous time
     #   period (e.g., 1981-2000)
     dates_table = modelsetup.datesmodelrun(
-            startyear=pygem_prms.gcm_bc_startyear, endyear=pygem_prms.gcm_bc_endyear, spinupyears=pygem_prms.gcm_bc_spinupyears,
-            option_wateryear=pygem_prms.gcm_bc_wateryear)
+            startyear=pygem_prms.gcm_startyear, endyear=pygem_prms.gcm_endyear, spinupyears=pygem_prms.gcm_spinupyears,
+            option_wateryear=pygem_prms.gcm_wateryear)
 
             
     # ===== RUN MASS BALANCE =====
@@ -1394,6 +1398,8 @@ def main(list_packed_vars):
                         
                         # Tidewater glaciers
                         else:
+                            cfg.PARAMS['use_kcalving_for_inversion'] = True
+                            cfg.PARAMS['use_kcalving_for_run'] = True
                             out_calving = find_inversion_calving_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears_ref),
                                                                              glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)
                                 
@@ -1868,25 +1874,25 @@ def main(list_packed_vars):
                             # Filename
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                          str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
+                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_bc_endyear) + '_all.nc')
                         elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-                                          str(args.gcm_endyear) + '_all.nc')
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                          str(args.gcm_bc_endyear) + '_all.nc')
                             np.savetxt(output_sim_fp + 'tas_mon_' + glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-                                          str(args.gcm_endyear) + '.csv', gcm_temp_adj, delimiter="\n")
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                          str(args.gcm_bc_endyear) + '.csv', gcm_temp_adj, delimiter="\n")
                             np.savetxt(output_sim_fp + 'pr_mon_' + glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-                                          str(args.gcm_endyear) + '.csv', gcm_prec_adj, delimiter="\n")
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                          str(args.gcm_bc_endyear) + '.csv', gcm_prec_adj, delimiter="\n")
                         else:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-                                          str(args.gcm_endyear) + '_all.nc')
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                          str(args.gcm_bc_endyear) + '_all.nc')
                         # Export netcdf
                         output_ds_all_stats.to_netcdf(output_sim_fp + netcdf_fn, encoding=encoding) 
                         
@@ -1919,17 +1925,17 @@ def main(list_packed_vars):
                             # Filename
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                          str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
+                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_bc_endyear) + '_binned.nc')
                         elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-                                          str(args.gcm_endyear) + '_binned.nc')
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                          str(args.gcm_bc_endyear) + '_binned.nc')
                         else:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-                                          str(args.gcm_endyear) + '_binned.nc')
+                                          '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                          str(args.gcm_bc_endyear) + '_binned.nc')
                         # Export netcdf
                         output_ds_binned_stats.to_netcdf(output_sim_binned_fp + netcdf_fn, encoding=encoding_binned)
             
@@ -1958,12 +1964,12 @@ def main(list_packed_vars):
     #                        # Filename
     #                        netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
     #                                      str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-    #                                      str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_annual.nc')
+    #                                      str(args.gcm_bc_startyear) + '_' + str(args.gcm_bc_endyear) + '_annual.nc')
     #                    else:
     #                        netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
     #                                      str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-    #                                      '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + 
-    #                                      str(args.gcm_endyear) + '_annual.nc')
+    #                                      '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+    #                                      str(args.gcm_bc_endyear) + '_annual.nc')
     #                    # Export netcdf
     #                    output_ds_essential_sims.to_netcdf(output_sim_essential_fp + netcdf_fn, encoding=encoding_essential_sims)
     #                    # Close datasets
