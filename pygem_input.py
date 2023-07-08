@@ -5,7 +5,7 @@ import os
 # External libraries
 import numpy as np
 # Local libaries
-# from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
+from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
 #%% ===== MODEL SETUP DIRECTORY =====
@@ -59,21 +59,20 @@ if ref_spinupyears > 0:
 
 # Full GCM period. This includes both the period of time used for bias-correction (e.g., 1981-2019) 
 #   and for the simulation run (e.g., 2000-2100).
-gcm_startyear = 2000            # first year of model run (simulation dataset)
-gcm_endyear = 2100              # last year of model run (simulation dataset)
-gcm_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
-gcm_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
-constantarea_years = 0          # number of years to not let the area or volume change
-if gcm_spinupyears > 0:
-    assert 0==1, 'Code needs to be tested to enure spinup years are correctly accounted for in output files'
-
-# Bias corrected years used for simulation runs. This is the period of time when PyGEM
-#   will actually simulate glacier evolution using the additive (temperature) and 
-#   multiplicative (precip) values calculated using the bias-correction period.
-gcm_bc_startyear = 2000         # first year of bias-correction (simulation dataset)
-gcm_bc_endyear = 2100           # last year of bias-correction (simulation dataset)
+gcm_bc_startyear = 2000            # first year of model run (simulation dataset)
+gcm_bc_endyear = 2100              # last year of model run (simulation dataset)
 gcm_bc_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
 gcm_bc_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
+constantarea_years = 0          # number of years to not let the area or volume change
+if gcm_bc_spinupyears > 0:
+    assert 0==1, 'Code needs to be tested to enure spinup years are correctly accounted for in output files'
+
+# GCM period used for simulation run. This is the period of time when PyGEM
+#   will actually simulate glacier evolution.
+gcm_startyear = 2000         # first year of bias-correction (simulation dataset)
+gcm_endyear = 2100           # last year of bias-correction (simulation dataset)
+gcm_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
+gcm_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
 
 # Hindcast option (flips array so 1960-2000 would run 2000-1960 ensuring that glacier area at 2000 is correct)
 hindcast = False                # True: run hindcast simulation, False: do not
@@ -150,7 +149,7 @@ elif option_calibration in ['MCMC', 'MCMC_fullsim']:
     option_areaconstant = True      # Option to keep area constant or evolve
     # Chain options
     n_chains = 1                    # number of chains (min 1, max 3)
-    mcmc_sample_no = 10000          # number of steps (10000 was found to be sufficient in HMA)
+    mcmc_sample_no = 10000         # number of steps (10000 was found to be sufficient in HMA)
     mcmc_burn_no = 200              # number of steps to burn-in (0 records all steps in chain)
 #    mcmc_sample_no = 100          # number of steps (10000 was found to be sufficient in HMA)
 #    mcmc_burn_no = 0              # number of steps to burn-in (0 records all steps in chain)
