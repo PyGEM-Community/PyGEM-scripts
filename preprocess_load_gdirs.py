@@ -51,7 +51,7 @@ def main(glacno, is_tidewater=False):
     None.
 
     '''
-    if not is_tidewater or pygem_prms.ignore_calving:
+    if not is_tidewater or not pygem_prms.include_calving:
         gdir = single_flowline_glacier_directory(glacno, logging_level='CRITICAL')
         gdir.is_tidewater = False
     else:
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         
         glac_termtype = main_glac_rgi.loc[nglac,'TermType']
         
-        if not glac_termtype in [1,5] or pygem_prms.ignore_calving:
+        if not glac_termtype in [1,5] or not pygem_prms.include_calving:
             glac_tidewater = False
         else:
             glac_tidewater = True

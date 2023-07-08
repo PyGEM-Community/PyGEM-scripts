@@ -29,11 +29,16 @@ from pygem.oggm_compat import single_flowline_glacier_directory_with_calving
 from pygem.shop import debris 
 from pygem import class_climate
 
+import oggm
+oggm_version = float(oggm.__version__[0:3])
 from oggm import utils, cfg
 from oggm import tasks
-from oggm.core import climate
 from oggm.core.flowline import FluxBasedModel
 from oggm.core.inversion import find_inversion_calving_from_any_mb
+if oggm_version > 1.301:
+    from oggm.core.massbalance import apparent_mb_from_any_mb # Newer Version of OGGM
+else:
+    from oggm.core.climate import apparent_mb_from_any_mb # Older Version of OGGM
 
 
 #%% ----- MANUAL INPUT DATA -----
@@ -202,6 +207,9 @@ def reg_calving_flux(main_glac_rgi, calving_k, fa_glac_data_reg=None,
                                                               reset=reset_gdir
                                                               )
         gdir.is_tidewater = True
+        cfg.PARAMS['use_kcalving_for_inversion'] = True
+        cfg.PARAMS['use_kcalving_for_run'] = True
+
 
         try:
             fls = gdir.read_pickle('inversion_flowlines')
@@ -271,16 +279,12 @@ def reg_calving_flux(main_glac_rgi, calving_k, fa_glac_data_reg=None,
             else:
                 fs = pygem_prms.fs
                 glen_a_multiplier = pygem_prms.glen_a_multiplier
-                
-#            print('\n\nOVERWRITING GLEN_A\n\n')
-#            # Increasing glen_a_multiplier, decreases frontal ablation by decreasing ice thickness
-#            glen_a_multiplier=3
             
-            # cfl_number of 0.01 is more conservative than the default of 0.02 (less issues)
-            if cfl_number is None:
+            # CFL number (may use different values for calving to prevent errors)
+            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
                 cfg.PARAMS['cfl_number'] = pygem_prms.cfl_number
             else:
-                cfg.PARAMS['cfl_number'] = cfl_number
+                cfg.PARAMS['cfl_number'] = pygem_prms.cfl_number_calving
             
             # ----- Mass balance model for ice thickness inversion using OGGM -----
             mbmod_inv = PyGEMMassBalance(gdir, modelprms, glacier_rgi_table,
@@ -311,10 +315,9 @@ def reg_calving_flux(main_glac_rgi, calving_k, fa_glac_data_reg=None,
             # - find_inversion_calving_from_any_mb will do the inversion with calving, but if it fails
             #   then it will do the inversion assuming land-terminating
             if invert_standard:
-                climate.apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears))
+                apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears))
                 tasks.prepare_for_inversion(gdir)
                 tasks.mass_conservation_inversion(gdir, glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)
-#                tasks.filter_inversion_output(gdir)
             else:
                 out_calving = find_inversion_calving_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=mb_years,
                                                                  glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)

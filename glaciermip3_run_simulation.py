@@ -140,7 +140,7 @@ def main(list_packed_vars):
     
     # ===== LOAD GLACIERS =====
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no)
-    
+
     # ===== TIME PERIOD =====
     dates_table = modelsetup.datesmodelrun(
             startyear=1850, endyear=2100, spinupyears=0,
@@ -229,8 +229,6 @@ def main(list_packed_vars):
     sim_iters = 1
 
     for glac in range(main_glac_rgi.shape[0]):
-        
-        print('nglac:', glac)
         if glac == 0:
             print(gcm_name,':', main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId'])
         # Select subsets of data
@@ -247,10 +245,10 @@ def main(list_packed_vars):
         ref_prec = ref_prec_all[glac,:][np.newaxis,:]
         ref_lr = ref_lr_all[glac,:][np.newaxis,:]
         ref_elev = np.array([ref_elev_all[glac]])
-        
+
         # SSP scenarios
         for nssp, ssp in enumerate(['ssp126', 'ssp370' ,'ssp585']):
-#        for nssp, ssp in enumerate(['ssp585']):
+        # for nssp, ssp in enumerate(['ssp585']):
             
             # ----- TEMPERATURE -----
             # select the nearest grid point and get the annual means
@@ -359,8 +357,6 @@ def main(list_packed_vars):
 #        for period in pd_shuffle_clim_prec_all.columns:    
             if debug:
                 print('\n\nperiod:', period)
-            print('\nperiod:', period, main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId'])
-                
                 
             # Run info
             contributor = 'Rounce'
@@ -378,7 +374,6 @@ def main(list_packed_vars):
             sim_fp = pygem_prms.output_filepath + 'simulations/' + reg_str + '/' + gcm_name + '/' + period + '/'
             
             if not os.path.exists(sim_fp + filename):
-                
                 # Load climate data
                 gcm_temp = pd_shuffle_clim_temp_all[period].values[np.newaxis,:]
                 gcm_prec = pd_shuffle_clim_prec_all[period].values[np.newaxis,:]
@@ -400,7 +395,7 @@ def main(list_packed_vars):
                 # for batman in [0]:
     
                     # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
-                    if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
+                    if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
                         gdir = single_flowline_glacier_directory(glacier_str, logging_level='CRITICAL')
                         gdir.is_tidewater = False
                         calving_k = None
@@ -416,11 +411,11 @@ def main(list_packed_vars):
                     # Reference gdir for ice thickness inversion
                     gdir_ref = copy.deepcopy(gdir)
                     ref_tempstd = gcm_tempstd[:,0:dates_table_ref.shape[0]]
-                    gdir_ref.historical_climate = {'elev': ref_elev[glac],
-                                                'temp': ref_temp[glac,:],
-                                                'tempstd': ref_tempstd[glac,:],
-                                                'prec': ref_prec[glac,:],
-                                                'lr': ref_lr[glac,:]}
+                    gdir_ref.historical_climate = {'elev': ref_elev[0],
+                                                'temp': ref_temp[0,:],
+                                                'tempstd': ref_tempstd[0,:],
+                                                'prec': ref_prec[0,:],
+                                                'lr': ref_lr[0,:]}
                     gdir_ref.dates_table = dates_table_ref
                     
                     # Add climate data to glacier directory
@@ -429,12 +424,6 @@ def main(list_packed_vars):
                                                 'tempstd': gcm_tempstd[0,:],
                                                 'prec': gcm_prec[0,:],
                                                 'lr': gcm_lr[0,:]}
-        
-        #            print(gdir.historical_climate['elev'].shape, gdir.historical_climate['elev'])
-        #            print(gdir.historical_climate['temp'].shape)
-        #            print(gdir.historical_climate['tempstd'].shape)
-        #            print(gdir.historical_climate['prec'].shape)
-        #            print(gdir.historical_climate['lr'].shape)
         
                     # Synthetic ("syn") dates table
                     dates_table_syn = pd.DataFrame(np.zeros((gcm_temp.shape[1],len(dates_table.columns))), columns=dates_table.columns)
@@ -479,7 +468,7 @@ def main(list_packed_vars):
                                                       'precgrad': modelprms_all['precgrad']}
                                 
                             # Calving parameter
-                            if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
+                            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
                                 calving_k = None
                             else:
                                 # Load quality controlled frontal ablation data 
@@ -510,14 +499,11 @@ def main(list_packed_vars):
                         if pygem_prms.option_dynamics in ['OGGM', 'MassRedistributionCurves']:
         
                             # CFL number (may use different values for calving to prevent errors)
-                            if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
+                            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
                                 cfg.PARAMS['cfl_number'] = pygem_prms.cfl_number
                             else:
                                 cfg.PARAMS['cfl_number'] = pygem_prms.cfl_number_calving
-        #                        cfg.PARAMS['calving_k'] = calving_k
-        #                        cfg.PARAMS['inversion_calving_k'] = calving_k
-        
-                            
+
                             if debug:
                                 print('cfl number:', cfg.PARAMS['cfl_number'])
                                 
@@ -565,15 +551,14 @@ def main(list_packed_vars):
                                     inversion_filter = True
                                 else:
                                     inversion_filter = False
-                                      
+                                    
                                 # Perform inversion based on PyGEM MB using reference directory
                                 mbmod_inv = PyGEMMassBalance(gdir_ref, modelprms, glacier_rgi_table,
-                                                              hindcast=pygem_prms.hindcast,
-                                                              debug=pygem_prms.debug_mb,
-                                                              debug_refreeze=pygem_prms.debug_refreeze,
-                                                              fls=fls, option_areaconstant=True,
-                                                              inversion_filter=inversion_filter)
-
+                                                             hindcast=pygem_prms.hindcast,
+                                                             debug=pygem_prms.debug_mb,
+                                                             debug_refreeze=pygem_prms.debug_refreeze,
+                                                             fls=fls, option_areaconstant=True,
+                                                             inversion_filter=inversion_filter)
         #                        if debug:
         #                            h, w = gdir.get_inversion_flowline_hw()
         #                            mb_t0 = (mbmod_inv.get_annual_mb(h, year=0, fl_id=0, fls=fls) * cfg.SEC_IN_YEAR * 
@@ -582,19 +567,20 @@ def main(list_packed_vars):
         #                            plt.ylabel('Elevation')
         #                            plt.xlabel('Mass balance (mwea)')
         #                            plt.show()
-        
+
                                 # Non-tidewater glaciers
-                                if not gdir.is_tidewater or pygem_prms.ignore_calving:
+                                if not gdir.is_tidewater or not pygem_prms.include_calving:
                                     # Arbitrariliy shift the MB profile up (or down) until mass balance is zero (equilibrium for inversion)
                                     apparent_mb_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears_ref))
                                     tasks.prepare_for_inversion(gdir)
                                     tasks.mass_conservation_inversion(gdir, glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)
-                                
+
                                 # Tidewater glaciers
                                 else:
                                     out_calving = find_inversion_calving_from_any_mb(gdir, mb_model=mbmod_inv, mb_years=np.arange(nyears_ref),
                                                                                       glen_a=cfg.PARAMS['glen_a']*glen_a_multiplier, fs=fs)
                                         
+
                                 # ----- INDENTED TO BE JUST WITH DYNAMICS -----
                                 tasks.init_present_time_glacier(gdir) # adds bins below
                                 debris.debris_binned(gdir, fl_str='model_flowlines')  # add debris enhancement factors to flowlines
@@ -795,8 +781,6 @@ def main(list_packed_vars):
                             # Record output for successful runs
                             if successful_run:
                                 
-                                # print('success')
-                                
                                 if not pygem_prms.option_dynamics is None:
                                     if debug:
                                         graphics.plot_modeloutput_section(ev_model)
@@ -888,7 +872,6 @@ def main(list_packed_vars):
                                 
                                 ds.to_netcdf(sim_fp + filename, encoding=encoding)
                                                     
-                    # print('\n\nADD BACK IN EXCEPTION\n\n')
                 except:
                     # LOG FAILURE
                     fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/' + period + '/'

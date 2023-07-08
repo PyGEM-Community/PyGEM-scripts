@@ -40,13 +40,13 @@ from oggm import workflow
 #from oggm.core.inversion import calving_flux_from_depth
 
 # Model-specific libraries
-if pygem_prms.option_calibration in ['MCMC']:
-    import pymc
-    from pymc import deterministic
-if pygem_prms.option_calibration in ['emulator']:
+if pygem_prms.option_calibration in ['emulator', 'MCMC']:
     import torch
     import gpytorch
     import sklearn.model_selection
+if pygem_prms.option_calibration in ['MCMC']:
+    import pymc
+    from pymc import deterministic
 
 #%% FUNCTIONS
 def getparser():
@@ -377,7 +377,7 @@ def main(list_packed_vars):
 
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====        
         try:
-            if not glacier_rgi_table['TermType'] in [1,5] or pygem_prms.ignore_calving:
+            if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
                 gdir = single_flowline_glacier_directory(glacier_str, logging_level='CRITICAL')
                 gdir.is_tidewater = False
             else:
@@ -2635,16 +2635,18 @@ if __name__ == '__main__':
 #             if pygem_prms.use_calibrated_modelparams:
 #                 modelprms_dict = main_vars['modelprms_dict']
 
-##%%
+# #%%
+# import numpy as np
 # import pickle
-# fullfn = '/Users/drounce/Documents/HiMAT/R11_rgi_glac_number_1-1000glac_batch_0.pkl'
-# with open(fullfn, 'rb') as f:
-#     A = pickle.load(f)
-# modelprms_fullfn = '/Users/drounce/Documents/HiMAT/Output/1.01390-modelprms_dict.pkl'
+# # fullfn = '/Users/drounce/Documents/HiMAT/R11_rgi_glac_number_1-1000glac_batch_0.pkl'
+# # with open(fullfn, 'rb') as f:
+# #     A = pickle.load(f)
+# modelprms_fullfn = '/Users/drounce/Documents/HiMAT/Output/calibration/01/1.10689-modelprms_dict.pkl'
 # with open(modelprms_fullfn, 'rb') as f:
 #     modelprms_dict = pickle.load(f)
-# print(modelprms_dict['MCMC']['mb_obs_mwea'])
-##%%
+# print('mcmc:', modelprms_dict['MCMC']['mb_obs_mwea'], np.mean(modelprms_dict['MCMC']['mb_mwea']['chain_0']))
+# print('emulator:', modelprms_dict['emulator'])
+# #%%
 # print(modelprms_dict[pygem_prms.option_calibration][‘kp’])
 # print('obs:', modelprms_dict['MCMC']['mb_obs_mwea'])
 # print('\nEmulator:')

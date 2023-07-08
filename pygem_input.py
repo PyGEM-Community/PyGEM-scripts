@@ -15,32 +15,32 @@ output_filepath = main_directory + '/../Output/'
 model_run_date = 'July 2 2023'
 
 #%% ===== GLACIER SELECTION =====
-rgi_regionsO1 = [15]                 # 1st order region number (RGI V6.0)
+rgi_regionsO1 = [13]                 # 1st order region number (RGI V6.0)
 rgi_regionsO2 = 'all'               # 2nd order region number (RGI V6.0)
 # RGI glacier number (RGI V6.0)
 #  Three options: (1) use glacier numbers for a given region (or 'all'), must have glac_no set to None
 #                 (2) glac_no is not None, e.g., ['1.00001', 13.0001'], overrides rgi_glac_number
 #                 (3) use one of the functions from  utils._funcs_selectglaciers
 rgi_glac_number = 'all'
-# rgi_glac_number = glac_num_fromrange(1,20)
+# rgi_glac_number = glac_num_fromrange(1,10)
 
 glac_no_skip = None
 glac_no = None 
-glac_no = ['15.03733'] # Khumbu Glacier
+# glac_no = ['15.03733'] # Khumbu Glacier
 # glac_no = ['1.10689'] # Columbia Glacier
-# glac_no = ['1.03622'] # LeConte Glacier
+glac_no = ['1.03622'] # LeConte Glacier
 
 if glac_no is not None:
     rgi_regionsO1 = sorted(list(set([int(x.split('.')[0]) for x in glac_no])))
 
 
-min_glac_area_km2 = 0               # Filter for size of glaciers to include (km2). Set to 0 to include all.
+min_glac_area_km2 = 0                 # Filter for size of glaciers to include (km2). Set to 0 to include all.
 
 # Types of glaciers to include (True) or exclude (False)
 include_landterm = True                # Switch to include land-terminating glaciers
 include_laketerm = True                # Switch to include lake-terminating glaciers
 include_tidewater = True               # Switch to include marine-terminating glaciers
-ignore_calving = False                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
+include_calving = True                 # Switch to ignore calving and treat tidewater glaciers as land-terminating
 
 oggm_base_url = 'https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/'
 logging_level = 'WORKFLOW'             # DEBUG, INFO, WARNING, ERROR, WORKFLOW, CRITICAL (recommended WORKFLOW)
@@ -385,7 +385,7 @@ hyps_data = 'OGGM'      # Hypsometry dataset (OGGM; Maussion etal 2019)
 # Hypsometry data pre-processed by OGGM
 if hyps_data == 'OGGM':
     oggm_gdir_fp = main_directory + '/../oggm_gdirs/'
-    overwrite_gdirs = True
+    overwrite_gdirs = False
     has_internet = True
 
 # Debris datasets

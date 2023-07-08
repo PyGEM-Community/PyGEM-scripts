@@ -2,6 +2,7 @@
 
 # Built-in libraries
 import collections
+import csv
 import os
 import pickle
 import sys
@@ -29,35 +30,31 @@ import pygem.pygem_modelsetup as modelsetup
 
 #%% ===== Input data =====
 # Script options
-option_check_output = False              # Scratch to check output
-option_check_glaciers = False            # Check that all batches have been completed for per_glacier
-option_standardize_reg = False           # Standardize regional output by making sure only includes glaciers with all sims completed
-
+option_check_glaciers = True            # Check that all batches have been completed for per_glacier
 option_aggregate_files = True          # Aggregate files into format for GlacierMIP3
+
+
+# Need to check later
+option_standardize_reg = False           # Standardize regional output by making sure only includes glaciers with all sims completed
 option_qc_area_standardize_reg = False   # Quality control by area and standardize
 option_qc_growing_glaciers = False       # Quality control against growing glaciers (they grow after they have already reached equilibrium)
 option_plot_output = False              # Plot regional datasets
 scratch = False
 
 #regions = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
-regions = [6,7,9,12]
-
-# 2 - ukesm1-0-ll 1951-1970 (0.97 area) 170001-19000
-# 8 - ipsl-cm6a-lr 1851-1870 (0.32) 1001-4000
-# 8 - 1901-1920 (0.32 each) --> complete
-# 11 - ipsl 1901-1920 (0.23) --> complete
+regions = [11]
 
 # GCMs and RCP scenarios
 gcm_names = ['gfdl-esm4', 'ipsl-cm6a-lr', 'mpi-esm1-2-hr', 'mri-esm2-0', 'ukesm1-0-ll']
 scenarios = ['1851-1870', '1901-1920', '1951-1970', '1995-2014',
-             'ssp126_2021-2040', 'ssp126_2041-2060', 'ssp126_2061-2080', 'ssp126_2081-2100',
-             'ssp370_2021-2040', 'ssp370_2041-2060', 'ssp370_2061-2080', 'ssp370_2081-2100',
-             'ssp585_2021-2040', 'ssp585_2041-2060', 'ssp585_2061-2080', 'ssp585_2081-2100']
-#gcm_names = ['ipsl-cm6a-lr']
-#scenarios = ['1901-1920']
+              'ssp126_2021-2040', 'ssp126_2041-2060', 'ssp126_2061-2080', 'ssp126_2081-2100',
+              'ssp370_2021-2040', 'ssp370_2041-2060', 'ssp370_2061-2080', 'ssp370_2081-2100',
+              'ssp585_2021-2040', 'ssp585_2041-2060', 'ssp585_2061-2080', 'ssp585_2081-2100']
+# gcm_names = ['gfdl-esm4']
+# scenarios = ['1851-1870']
 
-netcdf_fp_cmip5 = '/Users/drounce/Documents/glaciermip3/spc_backup/'
-#netcdf_fp_cmip5 = pygem_prms.main_directory + '/../Output/simulations/'
+# netcdf_fp_cmip5 = '/Users/drounce/Documents/glaciermip3/spc_backup/'
+netcdf_fp_cmip5 = pygem_prms.main_directory + '/../Output/simulations/'
 
 
 fig_fp = netcdf_fp_cmip5 + '/../analysis/figures/'
@@ -88,6 +85,96 @@ rgi_reg_dict = {'all':'Global',
 
 
 time_start = time.time()
+
+if option_check_glaciers:
+    
+    gcm_names_all = ['gfdl-esm4', 'ipsl-cm6a-lr', 'mpi-esm1-2-hr', 'mri-esm2-0', 'ukesm1-0-ll']
+    scenarios_all = ['1851-1870', '1901-1920', '1951-1970', '1995-2014',
+                     'ssp126_2021-2040', 'ssp126_2041-2060', 'ssp126_2061-2080', 'ssp126_2081-2100',
+                     'ssp370_2021-2040', 'ssp370_2041-2060', 'ssp370_2061-2080', 'ssp370_2081-2100',
+                     'ssp585_2021-2040', 'ssp585_2041-2060', 'ssp585_2061-2080', 'ssp585_2081-2100']
+    
+    for region in regions:
+        
+        main_glac_rgi = modelsetup.selectglaciersrgitable(
+            rgi_regionsO1=[region], rgi_regionsO2='all',rgi_glac_number='all', 
+            include_landterm=True, include_laketerm=True, include_tidewater=True)
+        
+        # Record diagnostics
+        reg_diag_df_fp = netcdf_fp_cmip5 + '/glaciermip3_summary/'
+        reg_diag_df_fn = 'R' + str(region).zfill(2) + '_glaciermip3_success_summary.csv'
+        if not os.path.exists(reg_diag_df_fp):
+            os.makedirs(reg_diag_df_fp)
+        try:
+            reg_diag_df = pd.read_csv(reg_diag_df_fp + reg_diag_df_fn)
+        except:
+            reg_diag_df_cns = ['Region', 'GCM', 'Scenario', 
+                               'Glaciers Success', 'Glaciers', 'Glaciers Success %', 
+                               'Area Success', 'Area', 'Area Success %']
+            reg_diag_df = pd.DataFrame(np.zeros((len(gcm_names_all)*len(scenarios_all)+1, len(reg_diag_df_cns))), 
+                                       columns=reg_diag_df_cns)
+            reg_diag_df['Region'] = region
+            gcm_name_values = ['all'] + [gcm for gcm in gcm_names_all for i in range(len(scenarios_all))]
+            reg_diag_df['GCM'] = gcm_name_values
+            scenario_values = ['all'] + scenarios_all * len(gcm_names_all)
+            reg_diag_df['Scenario'] = scenario_values
+            reg_diag_df['Glaciers'] = main_glac_rgi.shape[0]
+            reg_diag_df['Area'] = main_glac_rgi.Area.sum()
+        gcm_scenario_list = [(reg_diag_df.loc[x,'GCM'], reg_diag_df.loc[x,'Scenario']) for x in reg_diag_df.index.values]
+        
+        
+        glacnos_quality = None
+        for gcm_name in gcm_names:
+
+            for scenario in scenarios:
+                
+                reg_diag_df_idx = gcm_scenario_list.index((gcm_name, scenario))
+                
+                netcdf_fp_sims = netcdf_fp_cmip5 + str(region).zfill(2) + '/' + gcm_name + '/' + scenario + '/'
+
+                gcm_scenario_glacnos = []
+                for i in os.listdir(netcdf_fp_sims):
+                    if i.startswith('Rounce_rgi' + str(region).zfill(2) + '_glaciers_' + scenario + '_' + gcm_name):
+                        glacno = i.split('_')[-1].split('.nc')[0]
+                        gcm_scenario_glacnos.append(glacno)
+                gcm_scenario_glacnos = sorted(gcm_scenario_glacnos)
+                
+                main_glac_rgi_gcmscenario = modelsetup.selectglaciersrgitable(glac_no=gcm_scenario_glacnos)
+                
+                if glacnos_quality is None:
+                    glacnos_quality = gcm_scenario_glacnos
+                else:
+                    glacnos_quality = list(set(glacnos_quality).intersection(gcm_scenario_glacnos))
+
+                reg_diag_df.loc[reg_diag_df_idx, 'Glaciers Success'] = main_glac_rgi_gcmscenario.shape[0]
+                reg_diag_df.loc[reg_diag_df_idx, 'Glaciers Success %'] = main_glac_rgi_gcmscenario.shape[0] / main_glac_rgi.shape[0] * 100
+                reg_diag_df.loc[reg_diag_df_idx, 'Area Success'] = main_glac_rgi_gcmscenario.Area.sum()
+                reg_diag_df.loc[reg_diag_df_idx, 'Area Success %'] = main_glac_rgi_gcmscenario.Area.sum() / main_glac_rgi.Area.sum() * 100
+        
+        # Export list of glacnos to process
+        glacnos_fn = 'R' + str(region).zfill(2) + '_glaciermip3_quality_glacnos.csv'
+        with open(reg_diag_df_fp + glacnos_fn, 'w') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow(glacnos_quality)
+        
+        #%%
+        # # Open file
+        # glacno_csv_fp = netcdf_fp_cmip5 + '/glaciermip3_summary/'
+        # glacno_csv_fn = 'R' + str(region).zfill(2) + '_glaciermip3_quality_glacnos.csv'
+        # with open(glacno_csv_fp + glacno_csv_fn, 'r') as glacno_csv_file:
+        #     glacnos_quality = list(csv.reader(glacno_csv_file, delimiter=','))[0]
+        
+            #%%
+        # Compute common statistics
+        main_glac_rgi_quality = modelsetup.selectglaciersrgitable(glac_no=glacnos_quality)
+        reg_diag_df.loc[0, 'Glaciers Success'] = main_glac_rgi_quality.shape[0]
+        reg_diag_df.loc[0, 'Glaciers Success %'] = main_glac_rgi_quality.shape[0] / main_glac_rgi.shape[0] * 100
+        reg_diag_df.loc[0, 'Area Success'] = main_glac_rgi_quality.Area.sum()
+        reg_diag_df.loc[0, 'Area Success %'] = main_glac_rgi_quality.Area.sum() / main_glac_rgi.Area.sum() * 100
+        
+        # Export statistics
+        reg_diag_df.to_csv(reg_diag_df_fp + reg_diag_df_fn)
+
 
 if option_aggregate_files:
     for region in regions:
@@ -173,7 +260,7 @@ if option_aggregate_files:
                             glacno = glacno[1:]
                         ds_all_glacier_fn = netcdf_fn.replace('_' + glacno, '_Batch-' + str(batch_start) + '-' + str(batch_end))
                         print('    ', ds_all_glacier_fn)
-                        ds_all_fp = netcdf_fp_cmip5 + 'Final/per_glacier/' + str(region).zfill(2) + '/'
+                        ds_all_fp = netcdf_fp_cmip5 + 'glaciermip3/per_glacier/' + str(region).zfill(2) + '/'
                         if not os.path.exists(ds_all_fp):
                             os.makedirs(ds_all_fp)
                         ds_all.to_netcdf(ds_all_fp + ds_all_glacier_fn)
@@ -217,200 +304,6 @@ if option_aggregate_files:
 #                        ds_all_reg_fn = netcdf_fn.replace('_' + glacno, '')
 #                        ds_all_reg_fn = ds_all_reg_fn.replace('glaciers','sum')
 #                        ds_all_reg.to_netcdf(ds_all_fp_reg + ds_all_reg_fn, encoding=encoding)
-    
-            
-#%%
-# ----- SCRATCH -----
-if option_check_output:
-    
-    # GCMs and RCP scenarios
-    gcm_names = ['gfdl-esm4']
-    scenarios = ['1851-1870']
-    regions = [17]
-    
-    area_threshold = 10 # m2
-
-    netcdf_fp_cmip5 = '/Users/drounce/Documents/glaciermip3/spc_backup/Final/per_glacier/'
-    
-    for reg in regions:
-        
-        main_glac_rgi = modelsetup.selectglaciersrgitable(rgi_regionsO1=[reg], rgi_regionsO2='all',rgi_glac_number='all')
-        
-        reg_fp = netcdf_fp_cmip5 + str(reg).zfill(2) + '/'
-        
-        #%%
-        for scenario in scenarios:
-            
-            for gcm_name in gcm_names:
-            
-                batch_names = []
-                for i in os.listdir(reg_fp):
-                    if gcm_name in i and scenario in i and i.endswith('.nc'):
-                        batch_names.append(i)
-                
-                batch_names = sorted(batch_names)
-                        
-                for batch_name in batch_names:
-                    ds = xr.open_dataset(reg_fp + batch_name)
-                    
-                    batch_glacnos = [x.split('-')[1] for x in list(ds.rgi_id.values)]
-                    
-                    main_glac_rgi_batch = modelsetup.selectglaciersrgitable(glac_no=batch_glacnos)
-                    
-                    batch_area_rgi = main_glac_rgi_batch.Area.values*1e6
-                    batch_area_ds = ds.area_m2.values[0,:]
-                    
-                    batch_area_dif = batch_area_ds - batch_area_rgi
-                    
-                    batch_area_dif_abs = np.absolute(batch_area_dif)
-                    batch_area_dif_abs[batch_area_dif_abs < area_threshold] = 0
-                    
-                    if batch_area_dif_abs.sum() > 0:
-                        redo_idx = np.nonzero(batch_area_dif_abs)[0]
-                        
-                    rgiids_redo = [batch_glacnos[x] for x in list(redo_idx)]
-                    
-                    print(rgiids_redo)
-                    
-#                    for rgiids_redo in 
-                    
-                    assert 1==0, 'here'
-
-                #%%
-                
-#                # ----- Find batch filenames to load -----
-#                if 'ssp' not in scenario:
-#                    ending = 'hist'
-#                else:
-#                    ending = scenario.split('_')[0]
-#                
-#                batch_fn_prefix = 'Rounce_rgi' + str(reg).zfill(2) + '_glaciers_' + scenario + '_' + gcm_name + '_' + ending
-#                glacno_int = int(glacno.split('.')[1])
-#                batch_startno = int(np.floor(glacno_int/1000))*1000+1
-#                batch_endno = int(np.floor(glacno_int/1000))*1000+1000
-#                batch_fn = batch_fn_prefix + '_Batch-' + str(batch_startno) + '-' + str(batch_endno) + '.nc'
-#
-#                # ----- Load batch data -----                    
-#                ds = xr.open_dataset(reg_fp + batch_fn)
-#                
-#                rgiids_list = list(ds.rgi_id.values)
-#                glacno_idx = rgiids_list.index('RGI60-' + str(reg).zfill(2) + '.' + str(glacno_int))
-#                
-#                glac_area_km2 = ds.area_m2.values[:,glacno_idx]/1e6
-#                
-#                if glac_areas_km2_gcm is None:
-#                    glac_areas_km2_gcm = glac_area_km2[np.newaxis,:]
-#                else:
-#                    glac_areas_km2_gcm = np.concatenate((glac_areas_km2_gcm,glac_area_km2[np.newaxis,:]), axis=0)
-#                
-##                glac_areas_km2_gcm.append(glac_area_km2/1e6)
-#                
-#                if glac_area_km2[0] < 1:
-#                    
-#                    glac_areas_km2_all = ds.area_m2.values[0,:]/1e6
-#                    print(glac_areas_km2_all[glacno_idx-3:glacno_idx+2])
-#                    
-#                    assert 1==0, 'here stop'
-#                    
-#            assert 1==0, 'here'
-#            
-##    # GCMs and RCP scenarios
-##    gcm_names = ['gfdl-esm4', 'ipsl-cm6a-lr', 'mpi-esm1-2-hr', 'mri-esm2-0', 'ukesm1-0-ll']
-##    scenarios = ['1851-1870', '1901-1920', '1951-1970', '1995-2014',
-##                 'ssp126_2021-2040', 'ssp126_2041-2060', 'ssp126_2061-2080', 'ssp126_2081-2100',
-##                 'ssp370_2021-2040', 'ssp370_2041-2060', 'ssp370_2061-2080', 'ssp370_2081-2100',
-##                 'ssp585_2021-2040', 'ssp585_2041-2060', 'ssp585_2061-2080', 'ssp585_2081-2100']
-##
-##    netcdf_fp_cmip5 = '/Users/drounce/Documents/glaciermip3/spc_backup/Final/per_glacier/'
-##
-##    glacnos = ['1.15769']
-##    
-##    batch_glacnos_ints = list(np.arange(15001,16001))
-##    batch_glacnos = ['1.' + str(x).zfill(5) for x in batch_glacnos_ints]
-##    main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=batch_glacnos)
-##    
-##    for glacno in glacnos:
-##        
-##        print(glacno)
-##
-##        reg = int(glacno.split('.')[0])
-##        
-##        reg_fp = netcdf_fp_cmip5 + str(reg).zfill(2) + '/'
-##        
-##        for scenario in scenarios:
-##            
-##            glac_areas_km2_gcm = None
-##            
-##            for gcm_name in gcm_names:
-##            
-##                print(scenario)
-##                
-##                # ----- Find batch filenames to load -----
-##                if 'ssp' not in scenario:
-##                    ending = 'hist'
-##                else:
-##                    ending = scenario.split('_')[0]
-##                
-##                batch_fn_prefix = 'Rounce_rgi' + str(reg).zfill(2) + '_glaciers_' + scenario + '_' + gcm_name + '_' + ending
-##                glacno_int = int(glacno.split('.')[1])
-##                batch_startno = int(np.floor(glacno_int/1000))*1000+1
-##                batch_endno = int(np.floor(glacno_int/1000))*1000+1000
-##                batch_fn = batch_fn_prefix + '_Batch-' + str(batch_startno) + '-' + str(batch_endno) + '.nc'
-##
-##                # ----- Load batch data -----                    
-##                ds = xr.open_dataset(reg_fp + batch_fn)
-##                
-##                rgiids_list = list(ds.rgi_id.values)
-##                glacno_idx = rgiids_list.index('RGI60-' + str(reg).zfill(2) + '.' + str(glacno_int))
-##                
-##                glac_area_km2 = ds.area_m2.values[:,glacno_idx]/1e6
-##                
-##                if glac_areas_km2_gcm is None:
-##                    glac_areas_km2_gcm = glac_area_km2[np.newaxis,:]
-##                else:
-##                    glac_areas_km2_gcm = np.concatenate((glac_areas_km2_gcm,glac_area_km2[np.newaxis,:]), axis=0)
-##                
-###                glac_areas_km2_gcm.append(glac_area_km2/1e6)
-##                
-##                if glac_area_km2[0] < 1:
-##                    
-##                    glac_areas_km2_all = ds.area_m2.values[0,:]/1e6
-##                    print(glac_areas_km2_all[glacno_idx-3:glacno_idx+2])
-##                    
-##                    assert 1==0, 'here stop'
-##                    
-##            assert 1==0, 'here'
-
-
-if option_check_glaciers:
-    for reg in regions:
-        main_glac_rgi = modelsetup.selectglaciersrgitable(
-            rgi_regionsO1=[reg], rgi_regionsO2='all',rgi_glac_number='all', 
-            include_landterm=True, include_laketerm=True, include_tidewater=True)
-        
-        #%%
-        bad_batches = []
-        for gcm_name in gcm_names:
-            
-            for scenario in scenarios:
-
-                nbatches_expected = int(np.ceil(main_glac_rgi.shape[0]/1000))
-                
-                netcdf_perglac_fp = netcdf_fp_cmip5 + 'Final/per_glacier/' + str(reg).zfill(2) + '/'
-
-                gcm_scenario_batch_fns = []
-                for i in os.listdir(netcdf_perglac_fp):
-                    if i.startswith('Rounce_rgi' + str(reg).zfill(2) + '_glaciers_' + scenario + '_' + gcm_name):
-                        gcm_scenario_batch_fns.append(i)
-                
-                print(gcm_name, scenario, len(gcm_scenario_batch_fns))
-                
-                
-                if len(gcm_scenario_batch_fns) < nbatches_expected:
-                    bad_batches.append(gcm_name + '_' + scenario)
-
-                
-    netcdf_fp_cmip5 = '/Users/drounce/Documents/glaciermip3/spc_backup/'
 
 
 #%%
