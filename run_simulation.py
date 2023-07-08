@@ -110,8 +110,6 @@ def getparser():
                         help='text file full of realizations to run')
     parser.add_argument('-gcm_bc_startyear', action='store', type=int, default=pygem_prms.gcm_bc_startyear,
                         help='start year for bias correction')
-    parser.add_argument('-gcm_bc_endyear', action='store', type=int, default=pygem_prms.gcm_bc_endyear,
-                        help='start year for bias correction')
     parser.add_argument('-gcm_startyear', action='store', type=int, default=pygem_prms.gcm_startyear,
                         help='start year for the model run')
     parser.add_argument('-gcm_endyear', action='store', type=int, default=pygem_prms.gcm_endyear,
@@ -983,16 +981,50 @@ def main(list_packed_vars):
     # ===== LOAD GLACIERS =====
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no)
     
+    
     # ===== TIME PERIOD =====
-    dates_table = modelsetup.datesmodelrun(
-            startyear=args.gcm_bc_startyear, endyear=args.gcm_bc_endyear, spinupyears=pygem_prms.gcm_bc_spinupyears,
-            option_wateryear=pygem_prms.gcm_bc_wateryear)
+    # Reference Calibration Period
+    #  adjust end year in event that reference and GCM don't align
+    if pygem_prms.ref_endyear <= args.gcm_endyear:
+        ref_endyear = pygem_prms.ref_endyear
+    else:
+        ref_endyear = args.gcm_endyear
+    dates_table_ref = modelsetup.datesmodelrun(startyear=pygem_prms.ref_startyear, endyear=ref_endyear,
+                                               spinupyears=pygem_prms.ref_spinupyears,
+                                               option_wateryear=pygem_prms.ref_wateryear)
+    # Reference Bias Adjustment Period
+    dates_table_ref_bc = modelsetup.datesmodelrun(startyear=args.gcm_bc_startyear, endyear=ref_endyear,
+                                                  spinupyears=pygem_prms.ref_spinupyears,
+                                                  option_wateryear=pygem_prms.ref_wateryear)
+    
+    if debug:
+        print('ref years:', pygem_prms.ref_startyear, ref_endyear)
+        print('ref bc years:', args.gcm_bc_startyear, ref_endyear)
+        
+    # GCM Full Period (includes bias correction and simulation)
+    if pygem_prms.ref_startyear <= args.gcm_startyear:
+        gcm_startyear = pygem_prms.ref_startyear
+    else:
+        gcm_startyear = args.gcm_startyear
+        
+    dates_table_full = modelsetup.datesmodelrun(
+            startyear=gcm_startyear, endyear=args.gcm_endyear, spinupyears=pygem_prms.gcm_spinupyears,
+            option_wateryear=pygem_prms.gcm_wateryear)
+    
+    # GCM Simulation Period
+    if args.gcm_startyear > gcm_startyear:
+        dates_table = modelsetup.datesmodelrun(
+                startyear=args.gcm_startyear, endyear=args.gcm_endyear, spinupyears=pygem_prms.gcm_spinupyears,
+                option_wateryear=pygem_prms.gcm_wateryear)
+    else:
+        dates_table = dates_table_full
+    
     
     # ===== LOAD CLIMATE DATA =====
     # Climate class
     if gcm_name in ['ERA5', 'ERA-Interim', 'COAWST']:
         gcm = class_climate.GCM(name=gcm_name)
-        dates_table_ref = dates_table
+        dates_table_ref = dates_table_full
     else:
         # GCM object
         if realization is None:
@@ -1001,43 +1033,103 @@ def main(list_packed_vars):
             gcm = class_climate.GCM(name=gcm_name, scenario=scenario, realization=realization)
         # Reference GCM
         ref_gcm = class_climate.GCM(name=pygem_prms.ref_gcm_name)
-        # Adjust reference dates in event that reference is longer than GCM data
-        if pygem_prms.ref_startyear >= args.gcm_bc_startyear:
-            ref_startyear = pygem_prms.ref_startyear
-        else:
-            ref_startyear = args.gcm_bc_startyear
-        if pygem_prms.ref_endyear <= args.gcm_bc_endyear:
-            ref_endyear = pygem_prms.ref_endyear
-        else:
-            ref_endyear = args.gcm_bc_endyear
-        dates_table_ref = modelsetup.datesmodelrun(startyear=ref_startyear, endyear=ref_endyear,
-                                                   spinupyears=pygem_prms.ref_spinupyears,
-                                                   option_wateryear=pygem_prms.ref_wateryear)
     
-    # Select climate data
+    # ----- Select Temperature and Precipitation Data -----
     # Air temperature [degC]
     gcm_temp, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(gcm.temp_fn, gcm.temp_vn, main_glac_rgi,
-                                                                  dates_table)
+                                                                 dates_table_full)
+    ref_temp, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.temp_fn, ref_gcm.temp_vn,
+                                                                     main_glac_rgi, dates_table_ref_bc)
+    # Precipitation [m]
+    gcm_prec, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(gcm.prec_fn, gcm.prec_vn, main_glac_rgi,
+                                                                 dates_table_full)
+    ref_prec, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.prec_fn, ref_gcm.prec_vn,
+                                                                     main_glac_rgi, dates_table_ref_bc)
+    # Elevation [m asl]
+    gcm_elev = gcm.importGCMfxnearestneighbor_xarray(gcm.elev_fn, gcm.elev_vn, main_glac_rgi)
+    ref_elev = ref_gcm.importGCMfxnearestneighbor_xarray(ref_gcm.elev_fn, ref_gcm.elev_vn, main_glac_rgi)
+    
+    # ----- Temperature and Precipitation Bias Adjustments -----
+    # No adjustments
+    if pygem_prms.option_bias_adjustment == 0 or gcm_name == pygem_prms.ref_gcm_name:
+        if pygem_prms.gcm_wateryear == 'hydro':
+            dates_cn = 'wateryear'
+        else:
+            dates_cn = 'year'
+        sim_idx_start = dates_table_full[dates_cn].to_list().index(pygem_prms.gcm_startyear)
+        gcm_elev_adj = gcm_elev
+        gcm_temp_adj = gcm_temp[:,sim_idx_start:]
+        gcm_prec_adj = gcm_prec[:,sim_idx_start:]
+    # Bias correct based on reference climate data
+    else:
+        # OPTION 1: Adjust temp using Huss and Hock (2015), prec similar but addresses for variance and outliers
+        if pygem_prms.option_bias_adjustment == 1:
+            # Temperature bias correction
+            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_HH2015(ref_temp, ref_elev, gcm_temp,
+                                                                        dates_table_ref, dates_table_full,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+            # Precipitation bias correction
+            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_opt1(ref_prec, ref_elev, gcm_prec,
+                                                                      dates_table_ref, dates_table_full,
+                                                                      ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                      gcm_spinupyears=pygem_prms.gcm_spinupyears)
+        # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
+        elif pygem_prms.option_bias_adjustment == 2:
+            # Temperature bias correction
+            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_HH2015(ref_temp, ref_elev, gcm_temp,
+                                                                        dates_table_ref, dates_table_full,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+            # Precipitation bias correction
+            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_HH2015(ref_prec, ref_elev, gcm_prec,
+                                                                        dates_table_ref, dates_table_full,
+                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
+        # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
+        elif pygem_prms.option_bias_adjustment == 3:
+            # Temperature bias correction
+            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_QDM(ref_temp, ref_elev, gcm_temp,
+                                                                      dates_table_ref, dates_table_full,
+                                                                      ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                      gcm_spinupyears=pygem_prms.gcm_spinupyears)
+
+
+            # Precipitation bias correction
+            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_QDM(ref_prec, ref_elev, gcm_prec,
+                                                                      dates_table_ref, dates_table_full,
+                                                                      ref_spinupyears=pygem_prms.ref_spinupyears,
+                                                                      gcm_spinupyears=pygem_prms.gcm_spinupyears)
+    
+    # ----- Update Reference Period to be consistent with calibration period -----
+    if pygem_prms.ref_startyear != args.gcm_bc_startyear:
+        if pygem_prms.gcm_wateryear == 'hydro':
+            dates_cn = 'wateryear'
+        else:
+            dates_cn = 'year'
+        ref_idx_start = dates_table_ref_bc[dates_cn].to_list().index(pygem_prms.ref_startyear)
+        ref_temp = ref_temp[:,ref_idx_start:]
+        ref_prec = ref_prec[:,ref_idx_start:]
+    
+    # ----- Other Climate Datasets (Air temperature variability [degC] and Lapse rate [K m-1])
+    # Air temperature variability [degC]
     if pygem_prms.option_ablation != 2:
-        gcm_tempstd = np.zeros(gcm_temp.shape)
+        gcm_tempstd = np.zeros((main_glac_rgi.shape[0],dates_table.shape[0]))
+        ref_tempstd = np.zeros((main_glac_rgi.shape[0],dates_table_ref.shape[0]))
     elif pygem_prms.option_ablation == 2 and gcm_name in ['ERA5']:
         gcm_tempstd, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(gcm.tempstd_fn, gcm.tempstd_vn,
                                                                         main_glac_rgi, dates_table)
+        ref_tempstd = gcm_tempstd
     elif pygem_prms.option_ablation == 2 and pygem_prms.ref_gcm_name in ['ERA5']:
         # Compute temp std based on reference climate data
         ref_tempstd, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.tempstd_fn, ref_gcm.tempstd_vn,
                                                                             main_glac_rgi, dates_table_ref)
         # Monthly average from reference climate data
-        gcm_tempstd = gcmbiasadj.monthly_avg_array_rolled(ref_tempstd, dates_table_ref, dates_table)
+        gcm_tempstd = gcmbiasadj.monthly_avg_array_rolled(ref_tempstd, dates_table_ref, dates_table_full)
     else:
-        gcm_tempstd = np.zeros(gcm_temp.shape)
-    ref_tempstd = gcm_tempstd[:,0:dates_table_ref.shape[0]]
+        gcm_tempstd = np.zeros((main_glac_rgi.shape[0],dates_table.shape[0]))
+        ref_tempstd = np.zeros((main_glac_rgi.shape[0],dates_table_ref.shape[0]))
 
-    # Precipitation [m]
-    gcm_prec, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(gcm.prec_fn, gcm.prec_vn, main_glac_rgi,
-                                                                  dates_table)
-    # Elevation [m asl]
-    gcm_elev = gcm.importGCMfxnearestneighbor_xarray(gcm.elev_fn, gcm.elev_vn, main_glac_rgi)
     # Lapse rate
     if gcm_name in ['ERA-Interim', 'ERA5']:
         gcm_lr, gcm_dates = gcm.importGCMvarnearestneighbor_xarray(gcm.lr_fn, gcm.lr_vn, main_glac_rgi, dates_table)
@@ -1047,76 +1139,9 @@ def main(list_packed_vars):
         ref_lr, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.lr_fn, ref_gcm.lr_vn, main_glac_rgi,
                                                                         dates_table_ref)
         # Monthly average from reference climate data
-        gcm_lr = gcmbiasadj.monthly_avg_array_rolled(ref_lr, dates_table_ref, dates_table)
-
-    # ===== BIAS CORRECTIONS =====
-    # No adjustments
-    if pygem_prms.option_bias_adjustment == 0 or gcm_name == pygem_prms.ref_gcm_name:
-        gcm_temp_adj = gcm_temp
-        gcm_prec_adj = gcm_prec
-        gcm_elev_adj = gcm_elev
-        ref_elev = gcm_elev
-        ref_temp = gcm_temp
-        ref_prec = gcm_prec
-        ref_lr = gcm_lr
-        ref_tempstd = gcm_tempstd
-    # Bias correct based on reference climate data
-    else:
-        # Air temperature [degC], Precipitation [m], Elevation [masl], Lapse rate [K m-1]
-        ref_temp, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.temp_fn, ref_gcm.temp_vn,
-                                                                          main_glac_rgi, dates_table_ref)
-        ref_prec, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.prec_fn, ref_gcm.prec_vn,
-                                                                          main_glac_rgi, dates_table_ref)
-        ref_elev = ref_gcm.importGCMfxnearestneighbor_xarray(ref_gcm.elev_fn, ref_gcm.elev_vn, main_glac_rgi)
-       
-        # OPTION 1: Adjust temp using Huss and Hock (2015), prec similar but addresses for variance and outliers
-        if pygem_prms.option_bias_adjustment == 1:
-            # Temperature bias correction
-            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_HH2015(ref_temp, ref_elev, gcm_temp,
-                                                                        dates_table_ref, dates_table,
-                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
-            # Precipitation bias correction
-            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_opt1(ref_prec, ref_elev, gcm_prec,
-                                                                      dates_table_ref, dates_table,
-                                                                      ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                      gcm_spinupyears=pygem_prms.gcm_spinupyears)
-        # OPTION 2: Adjust temp and prec using Huss and Hock (2015)
-        elif pygem_prms.option_bias_adjustment == 2:
-            # Temperature bias correction
-            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_HH2015(ref_temp, ref_elev, gcm_temp,
-                                                                        dates_table_ref, dates_table,
-                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
-            # Precipitation bias correction
-            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_HH2015(ref_prec, ref_elev, gcm_prec,
-                                                                        dates_table_ref, dates_table,
-                                                                        ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                        gcm_spinupyears=pygem_prms.gcm_spinupyears)
-        # OPTION 3: Adjust temp and prec using quantile delta mapping, Cannon et al. (2015)
-        elif pygem_prms.option_bias_adjustment == 3:
-            # Temperature bias correction
-            gcm_temp_adj, gcm_elev_adj = gcmbiasadj.temp_biasadj_QDM(ref_temp, ref_elev, gcm_temp,
-                                                                     dates_table_ref, dates_table,
-                                                                     ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                     gcm_spinupyears=pygem_prms.gcm_spinupyears)
-
-
-            # Precipitation bias correction
-            gcm_prec_adj, gcm_elev_adj = gcmbiasadj.prec_biasadj_QDM(ref_prec, ref_elev, gcm_prec,
-                                                                     dates_table_ref, dates_table,
-                                                                     ref_spinupyears=pygem_prms.ref_spinupyears,
-                                                                     gcm_spinupyears=pygem_prms.gcm_spinupyears)
-            
-
-    # ===== OGGM TIME PERIOD =====
-    # reload dates_table for new time period that does not include previous time
-    #   period (e.g., 1981-2000)
-    dates_table = modelsetup.datesmodelrun(
-            startyear=pygem_prms.gcm_startyear, endyear=pygem_prms.gcm_endyear, spinupyears=pygem_prms.gcm_spinupyears,
-            option_wateryear=pygem_prms.gcm_wateryear)
-
-            
+        gcm_lr = gcmbiasadj.monthly_avg_array_rolled(ref_lr, dates_table_ref, dates_table_full)
+        
+    
     # ===== RUN MASS BALANCE =====
     # Number of simulations
     if pygem_prms.option_calibration == 'MCMC':
@@ -1160,10 +1185,10 @@ def main(list_packed_vars):
             # Reference gdir for ice thickness inversion
             gdir_ref = copy.deepcopy(gdir)
             gdir_ref.historical_climate = {'elev': ref_elev[glac],
-                                       'temp': ref_temp[glac,:],
-                                       'tempstd': ref_tempstd[glac,:],
-                                       'prec': ref_prec[glac,:],
-                                       'lr': ref_lr[glac,:]}
+                                        'temp': ref_temp[glac,:],
+                                        'tempstd': ref_tempstd[glac,:],
+                                        'prec': ref_prec[glac,:],
+                                        'lr': ref_lr[glac,:]}
             gdir_ref.dates_table = dates_table_ref
 
             # Add climate data to glacier directory
@@ -1172,11 +1197,12 @@ def main(list_packed_vars):
                 gcm_tempstd = gcm_tempstd[::-1]
                 gcm_prec_adj= gcm_prec_adj[::-1]
                 gcm_lr = gcm_lr[::-1]
+                
             gdir.historical_climate = {'elev': gcm_elev_adj[glac],
-                                       'temp': gcm_temp_adj[glac,:],
-                                       'tempstd': gcm_tempstd[glac,:],
-                                       'prec': gcm_prec_adj[glac,:],
-                                       'lr': gcm_lr[glac,:]}
+                                        'temp': gcm_temp_adj[glac,:],
+                                        'tempstd': gcm_tempstd[glac,:],
+                                        'prec': gcm_prec_adj[glac,:],
+                                        'lr': gcm_lr[glac,:]}
             gdir.dates_table = dates_table
             
             glacier_area_km2 = fls[0].widths_m * fls[0].dx_meter / 1e6
@@ -1271,11 +1297,11 @@ def main(list_packed_vars):
 
                 else:
                     modelprms_all = {'kp': [pygem_prms.kp],
-                                     'tbias': [pygem_prms.tbias],
-                                     'ddfsnow': [pygem_prms.ddfsnow],
-                                     'ddfice': [pygem_prms.ddfice],
-                                     'tsnow_threshold': [pygem_prms.tsnow_threshold],
-                                     'precgrad': [pygem_prms.precgrad]}
+                                      'tbias': [pygem_prms.tbias],
+                                      'ddfsnow': [pygem_prms.ddfsnow],
+                                      'ddfice': [pygem_prms.ddfice],
+                                      'tsnow_threshold': [pygem_prms.tsnow_threshold],
+                                      'precgrad': [pygem_prms.precgrad]}
                     calving_k = np.zeros(sim_iters) + pygem_prms.calving_k
                     
                 if debug and gdir.is_tidewater:
@@ -1374,11 +1400,11 @@ def main(list_packed_vars):
                               
                         # Perform inversion based on PyGEM MB using reference directory
                         mbmod_inv = PyGEMMassBalance(gdir_ref, modelprms, glacier_rgi_table,
-                                                     hindcast=pygem_prms.hindcast,
-                                                     debug=pygem_prms.debug_mb,
-                                                     debug_refreeze=pygem_prms.debug_refreeze,
-                                                     fls=fls, option_areaconstant=True,
-                                                     inversion_filter=inversion_filter)
+                                                      hindcast=pygem_prms.hindcast,
+                                                      debug=pygem_prms.debug_mb,
+                                                      debug_refreeze=pygem_prms.debug_refreeze,
+                                                      fls=fls, option_areaconstant=True,
+                                                      inversion_filter=inversion_filter)
 #                        if debug:
 #                            h, w = gdir.get_inversion_flowline_hw()
 #                            mb_t0 = (mbmod_inv.get_annual_mb(h, year=0, fl_id=0, fls=fls) * cfg.SEC_IN_YEAR * 
@@ -1873,25 +1899,25 @@ def main(list_packed_vars):
                             # Filename
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_bc_endyear) + '_all.nc')
+                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
                         elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                                          str(args.gcm_bc_endyear) + '_all.nc')
+                                          str(args.gcm_endyear) + '_all.nc')
                             np.savetxt(output_sim_fp + 'tas_mon_' + glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                                          str(args.gcm_bc_endyear) + '.csv', gcm_temp_adj, delimiter="\n")
+                                          str(args.gcm_endyear) + '.csv', gcm_temp_adj, delimiter="\n")
                             np.savetxt(output_sim_fp + 'pr_mon_' + glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                                          str(args.gcm_bc_endyear) + '.csv', gcm_prec_adj, delimiter="\n")
+                                          str(args.gcm_endyear) + '.csv', gcm_prec_adj, delimiter="\n")
                         else:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                                          str(args.gcm_bc_endyear) + '_all.nc')
+                                          str(args.gcm_endyear) + '_all.nc')
                         # Export netcdf
                         output_ds_all_stats.to_netcdf(output_sim_fp + netcdf_fn, encoding=encoding) 
                         
@@ -1924,17 +1950,17 @@ def main(list_packed_vars):
                             # Filename
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
                                           str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_bc_endyear) + '_binned.nc')
+                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
                         elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                                          str(args.gcm_bc_endyear) + '_binned.nc')
+                                          str(args.gcm_endyear) + '_binned.nc')
                         else:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                                           '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                                          str(args.gcm_bc_endyear) + '_binned.nc')
+                                          str(args.gcm_endyear) + '_binned.nc')
                         # Export netcdf
                         output_ds_binned_stats.to_netcdf(output_sim_binned_fp + netcdf_fn, encoding=encoding_binned)
             
@@ -1963,12 +1989,12 @@ def main(list_packed_vars):
     #                        # Filename
     #                        netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
     #                                      str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-    #                                      str(args.gcm_bc_startyear) + '_' + str(args.gcm_bc_endyear) + '_annual.nc')
+    #                                      str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_annual.nc')
     #                    else:
     #                        netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
     #                                      str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
     #                                      '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-    #                                      str(args.gcm_bc_endyear) + '_annual.nc')
+    #                                      str(args.gcm_endyear) + '_annual.nc')
     #                    # Export netcdf
     #                    output_ds_essential_sims.to_netcdf(output_sim_essential_fp + netcdf_fn, encoding=encoding_essential_sims)
     #                    # Close datasets

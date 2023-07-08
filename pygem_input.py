@@ -26,9 +26,9 @@ rgi_glac_number = 'all'
 
 glac_no_skip = None
 glac_no = None 
-# glac_no = ['15.03733'] # Khumbu Glacier
+glac_no = ['15.03733'] # Khumbu Glacier
 # glac_no = ['1.10689'] # Columbia Glacier
-glac_no = ['1.03622'] # LeConte Glacier
+# glac_no = ['1.03622'] # LeConte Glacier
 
 if glac_no is not None:
     rgi_regionsO1 = sorted(list(set([int(x.split('.')[0]) for x in glac_no])))
@@ -57,22 +57,15 @@ ref_spinupyears = 0                 # spin up years
 if ref_spinupyears > 0:
     assert 0==1, 'Code needs to be tested to ensure spinup years are correctly accounted for in output files'
 
-# Full GCM period. This includes both the period of time used for bias-correction (e.g., 1981-2019) 
-#   and for the simulation run (e.g., 2000-2100).
-gcm_bc_startyear = 2000            # first year of model run (simulation dataset)
-gcm_bc_endyear = 2100              # last year of model run (simulation dataset)
-gcm_bc_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
-gcm_bc_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
-constantarea_years = 0          # number of years to not let the area or volume change
-if gcm_bc_spinupyears > 0:
+# GCM period used for simulation run 
+gcm_startyear = 2000                # first year of model run (simulation dataset)
+gcm_endyear = 2100                  # last year of model run (simulation dataset)
+gcm_wateryear = 'calendar'          # options for years: 'calendar', 'hydro', 'custom'
+gcm_bc_startyear = 1981             # first year used for GCM bias correction
+gcm_spinupyears = 0                 # spin up years for simulation (output not set up for spinup years at present)
+constantarea_years = 0              # number of years to not let the area or volume change
+if gcm_spinupyears > 0:
     assert 0==1, 'Code needs to be tested to enure spinup years are correctly accounted for in output files'
-
-# GCM period used for simulation run. This is the period of time when PyGEM
-#   will actually simulate glacier evolution.
-gcm_startyear = 2000         # first year of bias-correction (simulation dataset)
-gcm_endyear = 2100           # last year of bias-correction (simulation dataset)
-gcm_wateryear = 'calendar'      # options for years: 'calendar', 'hydro', 'custom'
-gcm_spinupyears = 0             # spin up years for simulation (output not set up for spinup years at present)
 
 # Hindcast option (flips array so 1960-2000 would run 2000-1960 ensuring that glacier area at 2000 is correct)
 hindcast = False                # True: run hindcast simulation, False: do not
@@ -216,6 +209,13 @@ icethickness_cal_frac_byarea = 0.9  # Regional glacier area fraction that is use
 # Glacier dynamics scheme (options: 'OGGM', 'MassRedistributionCurves', None)
 option_dynamics = 'OGGM'
     
+# Bias adjustment option (options: 0, 1, 2, 3) 
+#  0: no adjustment
+#  1: new prec scheme and temp building on HH2015
+#  2: HH2015 methods
+#  3: quantile delta mapping
+option_bias_adjustment = 1
+
 # MCMC options
 if option_calibration == 'MCMC':
     sim_iters = 1                  # number of simulations
@@ -233,9 +233,6 @@ export_essential_data = True        # Export essential data (ex. mass balance co
 export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
-
-# Bias adjustment option (0: no adjustment, 1: new prec scheme and temp building on HH2015, 2: HH2015 methods, 3: quantile delta mapping)
-option_bias_adjustment = 1
 
 # OGGM glacier dynamics parameters
 if option_dynamics in ['OGGM', 'MassRedistributionCurves']:
