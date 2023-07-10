@@ -1024,6 +1024,7 @@ def main(list_packed_vars):
     # Climate class
     if gcm_name in ['ERA5', 'ERA-Interim', 'COAWST']:
         gcm = class_climate.GCM(name=gcm_name)
+        ref_gcm = gcm
         dates_table_ref = dates_table_full
     else:
         # GCM object
