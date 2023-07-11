@@ -739,8 +739,8 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
 
 def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_initial, 
                                   output_glac_bin_volume_annual, output_glac_bin_icethickness_annual, 
-                                  output_glac_bin_massbalclim_annual, output_glac_bin_dist,
-                                  option_wateryear=pygem_prms.gcm_wateryear):
+                                  output_glac_bin_massbalclim_monthly, output_glac_bin_massbalclim_annual, 
+                                  output_glac_bin_dist, option_wateryear=pygem_prms.gcm_wateryear):
     """
     Create empty xarray dataset that will be used to record binned ice thickness changes
 
@@ -772,10 +772,11 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
     elif option_wateryear == 'custom':
         year_type = 'custom year'
 
+    time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
     year_values = np.concatenate((year_values, np.array([annual_columns[-1] + 1])))
-    
     bin_values = np.arange(surface_h_initial.shape[0])
     
     # Variable coordinates dictionary
@@ -790,9 +791,17 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
     output_coords_dict['bin_surface_h_initial'] = collections.OrderedDict([('glac', glac_values), ('bin',bin_values)])
     output_coords_dict['bin_volume_annual'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
+    output_coords_dict['bin_thick_monthly'] = (
+            collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
     output_coords_dict['bin_thick_annual'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
+    output_coords_dict['bin_massbalclim_monthly'] = (
+            collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
     output_coords_dict['bin_massbalclim_annual'] = (
+            collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
+    output_coords_dict['bin_fluxdiv_monthly'] = (
+            collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
+    output_coords_dict['bin_fluxdiv_annual'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
     if pygem_prms.sim_iters > 1:
         output_coords_dict['bin_volume_annual_mad'] = (
@@ -852,6 +861,11 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
 #                'units': 'm3',
 #                'temporal_resolution': 'annual',
 #                'comment': 'volume of ice based on area and ice thickness at start of the year'},
+        'bin_thick_monthly': {
+                'long_name': 'binned monthly ice thickness',
+                'units': 'm',
+                'temporal_resolution': 'monthly',
+                'comment': 'binned ice thickness at the start of each month'},
         'bin_thick_annual': {
                 'long_name': 'binned ice thickness',
                 'units': 'm',
@@ -862,6 +876,11 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
 #                'units': 'm',
 #                'temporal_resolution': 'annual',
 #                'comment': 'volume of ice based on area and ice thickness at start of the year'},
+        'bin_massbalclim_monthly': {
+                'long_name': 'binned monthly climatic mass balance, in water equivalent',
+                'units': 'm',
+                'temporal_resolution': 'monthly',
+                'comment': 'monthly climatic mass balance from the PyGEM mass balance module'},
         'bin_massbalclim_annual': {
                 'long_name': 'binned climatic mass balance, in water equivalent',
                 'units': 'm',
@@ -872,6 +891,16 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
 #                'units': 'm',
 #                'temporal_resolution': 'annual',
 #                'comment': 'climatic mass balance is computed before dynamics so can theoretically exceed ice thickness'}
+        'bin_fluxdiv_annual': {
+                'long_name': 'binned annual flux divergence',
+                'units': 'm2',
+                'temporal_resolution': 'annual',
+                'comment': 'binned flux divergence is the sum of the binned ice thickness and the binned mass balance'},
+        'bin_fluxdiv_monthly': {
+                'long_name': 'binned monthly flux divergence',
+                'units': 'm2',
+                'temporal_resolution': 'monthly',
+                'comment': 'binned flux divergence is the sum of the binned ice thickness and the binned mass balance'},
         }
     if pygem_prms.sim_iters > 1:
         output_attrs_dict['bin_volume_annual_mad'] = {
@@ -931,7 +960,24 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
             np.median(output_glac_bin_icethickness_annual, axis=2)[np.newaxis,:,:])
     output_ds_all['bin_massbalclim_annual'].values = (
             np.median(output_glac_bin_massbalclim_annual, axis=2)[np.newaxis,:,:])
-    
+    output_ds_all['bin_massbalclim_monthly'].values = (
+            np.median(output_glac_bin_massbalclim_monthly, axis=2)[np.newaxis,:,:])
+    ### store binned monthly change in ice thickness ###
+    # to analyze monthly change in thickness we need to account for flux divergence.
+    # this is not so straight-forward, as PyGEM accounts for ice dynamics at the end of each model year and not on a monthly timestep.
+    # we'll therefore estimate annual flux divergence by combining the annual binned ice thickness and annual binned mass balance
+    # then assume flux divergence is constant throughout the year (divide annual by 12 to get monthly)
+    # monthly flux divergence can then be combined with monthly binned climatic mass balance to get monthly total mass
+    output_ds_all['bin_fluxdiv_annual'].values = (
+            output_ds_all['bin_massbalclim_annual'].values - output_ds_all['bin_thick_annual'].values)
+    # to get monthly fluxdiv, divide annual value evenly across 12 months - loop through 'bin_fluxdiv_annual' array
+    # for each elevation bin, the annual flux divergence is divided by 12 to get the monthly flux divergence, then the montly flux divergence is repeated 12 times
+    # numpy transpose is required to properly reshape the repeated array - there's probably a more clever way to accomplish this
+    for i in range(len(year_values) - 1):
+        output_ds_all['bin_fluxdiv_monthly'].values[:,:,i*12:(i+1)*12] = np.transpose(np.repeat([output_ds_all['bin_fluxdiv_annual'].values[:,:,i] / 12], 12, axis=1),axes=(0,2,1))
+    # now combine monthly flux divergence with montly climatic mass balance to get monthly thickness
+    output_ds_all['bin_thick_monthly'].values = output_ds_all['bin_massbalclim_monthly'].values - output_ds_all['bin_fluxdiv_monthly'].values
+
     if pygem_prms.sim_iters > 1:
         output_ds_all['bin_volume_annual_mad'].values = (
             median_abs_deviation(output_glac_bin_volume_annual, axis=2)[np.newaxis,:,:])
@@ -1773,6 +1819,9 @@ def main(list_packed_vars):
                             output_glac_bin_massbalclim_annual_sim = np.zeros(mbmod.glac_bin_icethickness_annual.shape)
                             output_glac_bin_massbalclim_annual_sim[:,:-1] =  mbmod.glac_bin_massbalclim_annual
                             output_glac_bin_massbalclim_annual = output_glac_bin_massbalclim_annual_sim[:,:,np.newaxis]
+                            output_glac_bin_massbalclim_monthly_sim = np.zeros(mbmod.glac_bin_massbalclim.shape)
+                            output_glac_bin_massbalclim_monthly_sim =  mbmod.glac_bin_massbalclim
+                            output_glac_bin_massbalclim_monthly = output_glac_bin_massbalclim_monthly_sim[:,:,np.newaxis]
                         else:
                             # Update the latest thickness and volume
                             output_glac_bin_volume_annual_sim = (mbmod.glac_bin_area_annual * 
@@ -1936,6 +1985,7 @@ def main(list_packed_vars):
                                 create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_initial,
                                                               output_glac_bin_volume_annual,
                                                               output_glac_bin_icethickness_annual, 
+                                                              output_glac_bin_massbalclim_monthly,
                                                               output_glac_bin_massbalclim_annual,
                                                               output_glac_bin_dist))
                         # Export statistics to netcdf
