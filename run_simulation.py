@@ -965,18 +965,28 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
     ### store binned monthly change in ice thickness ###
     # to analyze monthly change in thickness we need to account for flux divergence.
     # this is not so straight-forward, as PyGEM accounts for ice dynamics at the end of each model year and not on a monthly timestep.
-    # we'll therefore estimate annual flux divergence by combining the annual binned ice thickness and annual binned mass balance
-    # then assume flux divergence is constant throughout the year (divide annual by 12 to get monthly)
-    # monthly flux divergence can then be combined with monthly binned climatic mass balance to get monthly total mass
+    # we'll therefore estimate annual flux divergence by combining the annual binned ice thickness and annual binned mass balance,
+    # then assume flux divergence is constant throughout the year (divide annual by 12 to get monthly).
+    # monthly binned flux divergence can then be combined with monthly binned climatic mass balance to get monthly binned thickness
+    #
+    # first, get annual binned flux divergence as annual binned climatic mass balance (-) annual binned ice thickness, must account for density contrast (convert climatic mass balance in m w.e. to m ice)
     output_ds_all['bin_fluxdiv_annual'].values = (
-            output_ds_all['bin_massbalclim_annual'].values - output_ds_all['bin_thick_annual'].values)
-    # to get monthly fluxdiv, divide annual value evenly across 12 months - loop through 'bin_fluxdiv_annual' array
+            (output_ds_all['bin_massbalclim_annual'].values * 
+            pygem_prms.density_ice / 
+            pygem_prms.density_water) - 
+            output_ds_all['bin_thick_annual'].values)
+    # to get monthly flux divergence, divide annual value evenly across 12 months - loop through 'bin_fluxdiv_annual' array
     # for each elevation bin, the annual flux divergence is divided by 12 to get the monthly flux divergence, then the montly flux divergence is repeated 12 times
     # numpy transpose is required to properly reshape the repeated array - there's probably a more clever way to accomplish this
     for i in range(len(year_values) - 1):
-        output_ds_all['bin_fluxdiv_monthly'].values[:,:,i*12:(i+1)*12] = np.transpose(np.repeat([output_ds_all['bin_fluxdiv_annual'].values[:,:,i] / 12], 12, axis=1),axes=(0,2,1))
-    # now combine monthly flux divergence with montly climatic mass balance to get monthly thickness
-    output_ds_all['bin_thick_monthly'].values = output_ds_all['bin_massbalclim_monthly'].values - output_ds_all['bin_fluxdiv_monthly'].values
+        output_ds_all['bin_fluxdiv_monthly'].values[:,:,i*12:(i+1)*12] = (
+                np.transpose(np.repeat([output_ds_all['bin_fluxdiv_annual'].values[:,:,i] / 12], 12, axis=1),axes=(0,2,1)))
+    # now combine monthly binned flux divergence with montly climatic mass balance to get monthly binned thickness, must account for density contrast (convert climatic mass balance in m w.e. to m ice)
+    output_ds_all['bin_thick_monthly'].values = (
+            (output_ds_all['bin_massbalclim_monthly'].values * 
+            pygem_prms.density_ice / 
+            pygem_prms.density_water ) -  
+            output_ds_all['bin_fluxdiv_monthly'].values)
 
     if pygem_prms.sim_iters > 1:
         output_ds_all['bin_volume_annual_mad'].values = (
