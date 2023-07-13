@@ -21,6 +21,7 @@ from scipy import stats
 try:
     import pygem
 except:
+    print('---------\nPyGEM DEV\n---------')
     sys.path.append(os.getcwd() + '/../PyGEM/')
 import pygem_input as pygem_prms
 from pygem import class_climate
@@ -378,11 +379,11 @@ def main(list_packed_vars):
         # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====        
         try:
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
-                gdir = single_flowline_glacier_directory(glacier_str, logging_level='CRITICAL')
+                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = False
             else:
                 # set reset=True to overwrite non-calving directory that may already exist
-                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level='CRITICAL', 
+                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level, 
                                                                       reset=False)
                 gdir.is_tidewater = True
                 
@@ -449,6 +450,7 @@ def main(list_packed_vars):
                     
             except:
                 gdir.mbdata = None
+                print('FAILURE')
                 
                 # LOG FAILURE
                 fail_fp = pygem_prms.output_filepath + 'cal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'

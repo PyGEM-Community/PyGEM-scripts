@@ -26,6 +26,7 @@ import xarray as xr
 try:
     import pygem
 except:
+    print('---------\nPyGEM DEV\n---------')
     sys.path.append(os.getcwd() + '/../PyGEM/')
 
 # Local libraries
@@ -1227,11 +1228,11 @@ def main(list_packed_vars):
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
-                gdir = single_flowline_glacier_directory(glacier_str, logging_level='CRITICAL')
+                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = False
                 calving_k = None
             else:
-                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level='CRITICAL')
+                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = True
                 cfg.PARAMS['use_kcalving_for_inversion'] = True
                 cfg.PARAMS['use_kcalving_for_run'] = True
@@ -2064,7 +2065,7 @@ def main(list_packed_vars):
                     
         # print('\n\nADD BACK IN EXCEPTION\n\n')
         
-        except:
+        except Exception as err:
             # LOG FAILURE
             fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'
             if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
@@ -2073,7 +2074,7 @@ def main(list_packed_vars):
                 os.makedirs(fail_fp, exist_ok=True)
             txt_fn_fail = glacier_str + "-sim_failed.txt"
             with open(fail_fp + txt_fn_fail, "w") as text_file:
-                text_file.write(glacier_str + ' failed to complete simulation')
+                text_file.write(glacier_str + f' failed to complete simulation: {err}')
 
     # Global variables for Spyder development
     if args.option_parallels == 0:

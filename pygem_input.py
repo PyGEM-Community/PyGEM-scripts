@@ -5,6 +5,10 @@ import os
 # External libraries
 import numpy as np
 # Local libaries
+try:
+    import pygem
+except:
+    sys.path.append(os.getcwd() + '/../PyGEM/')
 from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
@@ -13,7 +17,7 @@ main_directory = os.getcwd()
 main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = 'July 11 2023'
+model_run_date = 'July 13 2023'
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [13]                 # 1st order region number (RGI V6.0)
@@ -31,19 +35,9 @@ glac_no = ['15.03733'] # Khumbu Glacier
 # glac_no = ['1.10689'] # Columbia Glacier
 # glac_no = ['1.03622'] # LeConte Glacier
 
-# custom import of list with RGIIDs of interest - we'll run all glaciers that we have IceBridge \delta_h data from
-# rgiids_fp = main_directory + '../glacierstatus/btober/rgiids_w_icebridge.txt'
-# glac_no = []
-
-# # open text file with list of RGIIds of interest and build python list of glac_no's
-# with open(rgiids_fp) as file:
-#     for line in file:
-#         line = line.strip().split('-')[1] # preprocess line
-# #         glac_no.append(line) 
 
 if glac_no is not None:
     rgi_regionsO1 = sorted(list(set([int(x.split('.')[0]) for x in glac_no])))
-
 
 min_glac_area_km2 = 0                 # Filter for size of glaciers to include (km2). Set to 0 to include all.
 
