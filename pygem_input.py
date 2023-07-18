@@ -17,7 +17,7 @@ main_directory = os.getcwd()
 main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = 'July 13 2023'
+model_run_date = 'July 18 2023'
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [13]                 # 1st order region number (RGI V6.0)
@@ -236,7 +236,6 @@ sim_stat_cns = ['median', 'mad']
 # Output options
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
 export_binned_thickness = True      # Export binned ice thickness
-export_binned_monthly = True       # Export binned monthly products, annual products are automatically exported with export_binned_thickness = True
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
 

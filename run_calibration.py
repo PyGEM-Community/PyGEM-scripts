@@ -450,7 +450,6 @@ def main(list_packed_vars):
                     
             except:
                 gdir.mbdata = None
-                print('FAILURE')
                 
                 # LOG FAILURE
                 fail_fp = pygem_prms.output_filepath + 'cal_fail/' + glacier_str.split('.')[0].zfill(2) + '/'

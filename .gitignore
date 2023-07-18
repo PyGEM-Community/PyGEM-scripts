@@ -161,3 +161,4 @@ cython_debug/
 
 # OS generated files
 .DS_Store
+analysis_glac_monthly_binned_thick.ipynb
