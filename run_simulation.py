@@ -30,6 +30,7 @@ except:
     sys.path.append(os.getcwd() + '/../PyGEM/')
 
 # Local libraries
+import pygem
 import pygem.gcmbiasadj as gcmbiasadj
 import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
@@ -578,7 +579,7 @@ def create_xrdataset(glacier_rgi_table, dates_table, option_wateryear=pygem_prms
     output_ds_all['O2Region'].values = np.array([glacier_rgi_table.O2Region])
     output_ds_all['Area'].values = np.array([glacier_rgi_table.Area * 1e6])
    
-    output_ds.attrs = {'source': 'PyGEMv0.1.0',
+    output_ds_all.attrs = {'source': f'PyGEMv{pygem.__version__}',
                        'institution': 'University of Alaska Fairbanks, Fairbanks, AK',
                        'history': 'Created by David Rounce (drounce@alaska.edu) on ' + pygem_prms.model_run_date,
                        'references': 'doi:10.3389/feart.2019.00331 and doi:10.1017/jog.2019.91'}
@@ -730,7 +731,7 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
     output_ds_all['O2Region'].values = np.array([glacier_rgi_table.O2Region])
     output_ds_all['Area'].values = np.array([glacier_rgi_table.Area * 1e6])
    
-    output_ds.attrs = {'source': 'PyGEMv0.1.0',
+    output_ds_all.attrs = {'source': f'PyGEMv{pygem.__version__}',
                        'institution': 'University of Alaska Fairbanks, Fairbanks, AK',
                        'history': 'Created by David Rounce (drounce@alaska.edu) on ' + pygem_prms.model_run_date,
                        'references': 'doi:10.3389/feart.2019.00331 and doi:10.1017/jog.2019.91'}
@@ -950,7 +951,7 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
         output_ds_all['bin_massbalclim_annual_mad'].values = (
             median_abs_deviation(output_glac_bin_massbalclim_annual, axis=2)[np.newaxis,:,:])
 
-    output_ds.attrs = {'source': 'PyGEMv0.1.0',
+    output_ds_all.attrs = {'source': f'PyGEMv{pygem.__version__}',
                        'institution': 'University of Alaska Fairbanks, Fairbanks, AK',
                        'history': 'Created by David Rounce (drounce@alaska.edu) on ' + pygem_prms.model_run_date,
                        'references': 'doi:10.3389/feart.2019.00331 and doi:10.1017/jog.2019.91'}
@@ -980,6 +981,7 @@ def main(list_packed_vars):
         scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
     elif not args.scenario is None:
         scenario = args.scenario
+    debug = args.debug
     if debug:
         if 'scenario' in locals():
             print(scenario)

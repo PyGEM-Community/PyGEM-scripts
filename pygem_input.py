@@ -2,6 +2,7 @@
 
 # Built-in libraries
 import os
+from datetime import datetime
 # External libraries
 import numpy as np
 # Local libaries
@@ -17,7 +18,7 @@ main_directory = os.getcwd()
 main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = 'July 18 2023'
+model_run_date = datetime.today().strftime('%Y-%m-%d')
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [13]                 # 1st order region number (RGI V6.0)
