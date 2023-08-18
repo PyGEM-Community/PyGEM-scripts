@@ -52,10 +52,10 @@ def main(glacno, is_tidewater=False):
 
     '''
     if not is_tidewater or not pygem_prms.include_calving:
-        gdir = single_flowline_glacier_directory(glacno, logging_level='CRITICAL')
+        gdir = single_flowline_glacier_directory(glacno, logging_level=pygem_prms.logging_level)
         gdir.is_tidewater = False
     else:
-        gdir = single_flowline_glacier_directory_with_calving(glacno, logging_level='CRITICAL')
+        gdir = single_flowline_glacier_directory_with_calving(glacno, logging_level=pygem_prms.logging_level)
         gdir.is_tidewater = True
         
     

@@ -26,9 +26,11 @@ import xarray as xr
 try:
     import pygem
 except:
+    print('---------\nPyGEM DEV\n---------')
     sys.path.append(os.getcwd() + '/../PyGEM/')
 
 # Local libraries
+import pygem
 import pygem.gcmbiasadj as gcmbiasadj
 import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
@@ -577,7 +579,7 @@ def create_xrdataset(glacier_rgi_table, dates_table, option_wateryear=pygem_prms
     output_ds_all['O2Region'].values = np.array([glacier_rgi_table.O2Region])
     output_ds_all['Area'].values = np.array([glacier_rgi_table.Area * 1e6])
    
-    output_ds.attrs = {'source': 'PyGEMv0.1.0',
+    output_ds_all.attrs = {'source': f'PyGEMv{pygem.__version__}',
                        'institution': 'University of Alaska Fairbanks, Fairbanks, AK',
                        'history': 'Created by David Rounce (drounce@alaska.edu) on ' + pygem_prms.model_run_date,
                        'references': 'doi:10.3389/feart.2019.00331 and doi:10.1017/jog.2019.91'}
@@ -729,7 +731,7 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
     output_ds_all['O2Region'].values = np.array([glacier_rgi_table.O2Region])
     output_ds_all['Area'].values = np.array([glacier_rgi_table.Area * 1e6])
    
-    output_ds.attrs = {'source': 'PyGEMv0.1.0',
+    output_ds_all.attrs = {'source': f'PyGEMv{pygem.__version__}',
                        'institution': 'University of Alaska Fairbanks, Fairbanks, AK',
                        'history': 'Created by David Rounce (drounce@alaska.edu) on ' + pygem_prms.model_run_date,
                        'references': 'doi:10.3389/feart.2019.00331 and doi:10.1017/jog.2019.91'}
@@ -739,8 +741,8 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
 
 def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_initial, 
                                   output_glac_bin_volume_annual, output_glac_bin_icethickness_annual, 
-                                  output_glac_bin_massbalclim_annual, output_glac_bin_dist,
-                                  option_wateryear=pygem_prms.gcm_wateryear):
+                                  output_glac_bin_massbalclim_monthly, output_glac_bin_massbalclim_annual, 
+                                  output_glac_bin_dist, option_wateryear=pygem_prms.gcm_wateryear):
     """
     Create empty xarray dataset that will be used to record binned ice thickness changes
 
@@ -772,10 +774,11 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
     elif option_wateryear == 'custom':
         year_type = 'custom year'
 
+    time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
     year_values = np.concatenate((year_values, np.array([annual_columns[-1] + 1])))
-    
     bin_values = np.arange(surface_h_initial.shape[0])
     
     # Variable coordinates dictionary
@@ -794,6 +797,8 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
     output_coords_dict['bin_massbalclim_annual'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
+    output_coords_dict['bin_massbalclim_monthly'] = (
+        collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
     if pygem_prms.sim_iters > 1:
         output_coords_dict['bin_volume_annual_mad'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('year', year_values)]))
@@ -867,6 +872,11 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
                 'units': 'm',
                 'temporal_resolution': 'annual',
                 'comment': 'climatic mass balance is computed before dynamics so can theoretically exceed ice thickness'},
+        'bin_massbalclim_monthly' : {
+                'long_name': 'binned monthly climatic mass balance, in water equivalent',
+                'units': 'm',
+                'temporal_resolution': 'monthly',
+                'comment': 'monthly climatic mass balance from the PyGEM mass balance module'},
 #        'bin_massbalclim_annual_mad': {
 #                'long_name': 'binned climatic mass balance, in water equivalent, median absolute deviation',
 #                'units': 'm',
@@ -931,7 +941,8 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
             np.median(output_glac_bin_icethickness_annual, axis=2)[np.newaxis,:,:])
     output_ds_all['bin_massbalclim_annual'].values = (
             np.median(output_glac_bin_massbalclim_annual, axis=2)[np.newaxis,:,:])
-    
+    output_ds_all['bin_massbalclim_monthly'].values = (
+            np.median(output_glac_bin_massbalclim_monthly, axis=2)[np.newaxis,:,:])
     if pygem_prms.sim_iters > 1:
         output_ds_all['bin_volume_annual_mad'].values = (
             median_abs_deviation(output_glac_bin_volume_annual, axis=2)[np.newaxis,:,:])
@@ -940,7 +951,7 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
         output_ds_all['bin_massbalclim_annual_mad'].values = (
             median_abs_deviation(output_glac_bin_massbalclim_annual, axis=2)[np.newaxis,:,:])
 
-    output_ds.attrs = {'source': 'PyGEMv0.1.0',
+    output_ds_all.attrs = {'source': f'PyGEMv{pygem.__version__}',
                        'institution': 'University of Alaska Fairbanks, Fairbanks, AK',
                        'history': 'Created by David Rounce (drounce@alaska.edu) on ' + pygem_prms.model_run_date,
                        'references': 'doi:10.3389/feart.2019.00331 and doi:10.1017/jog.2019.91'}
@@ -970,6 +981,7 @@ def main(list_packed_vars):
         scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
     elif not args.scenario is None:
         scenario = args.scenario
+    debug = args.debug
     if debug:
         if 'scenario' in locals():
             print(scenario)
@@ -1171,11 +1183,11 @@ def main(list_packed_vars):
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
-                gdir = single_flowline_glacier_directory(glacier_str, logging_level='CRITICAL')
+                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = False
                 calving_k = None
             else:
-                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level='CRITICAL')
+                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = True
                 cfg.PARAMS['use_kcalving_for_inversion'] = True
                 cfg.PARAMS['use_kcalving_for_run'] = True
@@ -1773,6 +1785,9 @@ def main(list_packed_vars):
                             output_glac_bin_massbalclim_annual_sim = np.zeros(mbmod.glac_bin_icethickness_annual.shape)
                             output_glac_bin_massbalclim_annual_sim[:,:-1] =  mbmod.glac_bin_massbalclim_annual
                             output_glac_bin_massbalclim_annual = output_glac_bin_massbalclim_annual_sim[:,:,np.newaxis]
+                            output_glac_bin_massbalclim_monthly_sim = np.zeros(mbmod.glac_bin_massbalclim.shape)
+                            output_glac_bin_massbalclim_monthly_sim =  mbmod.glac_bin_massbalclim
+                            output_glac_bin_massbalclim_monthly = output_glac_bin_massbalclim_monthly_sim[:,:,np.newaxis]
                         else:
                             # Update the latest thickness and volume
                             output_glac_bin_volume_annual_sim = (mbmod.glac_bin_area_annual * 
@@ -1936,6 +1951,7 @@ def main(list_packed_vars):
                                 create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_initial,
                                                               output_glac_bin_volume_annual,
                                                               output_glac_bin_icethickness_annual, 
+                                                              output_glac_bin_massbalclim_monthly,
                                                               output_glac_bin_massbalclim_annual,
                                                               output_glac_bin_dist))
                         # Export statistics to netcdf
@@ -2004,7 +2020,7 @@ def main(list_packed_vars):
                     
         # print('\n\nADD BACK IN EXCEPTION\n\n')
         
-        except:
+        except Exception as err:
             # LOG FAILURE
             fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'
             if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
@@ -2013,7 +2029,7 @@ def main(list_packed_vars):
                 os.makedirs(fail_fp, exist_ok=True)
             txt_fn_fail = glacier_str + "-sim_failed.txt"
             with open(fail_fp + txt_fn_fail, "w") as text_file:
-                text_file.write(glacier_str + ' failed to complete simulation')
+                text_file.write(glacier_str + f' failed to complete simulation: {err}')
 
     # Global variables for Spyder development
     if args.option_parallels == 0:
