@@ -623,6 +623,8 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
         year_type = 'custom year'
 
     time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+    time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in time_values]
+
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
     year_values = np.concatenate((year_values, np.array([annual_columns[-1] + 1])))
@@ -777,6 +779,7 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
         year_type = 'custom year'
 
     time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+    time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in time_values]
 
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
