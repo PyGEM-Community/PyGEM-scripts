@@ -1,4 +1,4 @@
-""" derive monthly change in ice thickness from PyGEM simulation """
+""" derive binned monthly ice thickness and mass from PyGEM simulation """
 
 # Built-in libraries
 import argparse
@@ -18,7 +18,6 @@ import xarray as xr
 try:
     import pygem
 except:
-    print('---------\nPyGEM DEV\n---------')
     sys.path.append(os.getcwd() + '/../PyGEM/')
 
 # Local libraries
@@ -89,24 +88,25 @@ def getparser():
 
 
 
-def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bin_volume_annual, bin_thick_annual):
+def get_binned_monthly(bin_massbalclim_monthly, bin_massbalclim_annual, bin_mass_annual, bin_thick_annual):
     """
-    funciton to calculate the monthly binned ice thickness
+    funciton to calculate the monthly binned ice thickness and mass
     from annual climatic mass balance and annual ice thickness products
 
-    to determine monthly change in mass, we must account for flux divergence
+    to determine monthlyt thickness and mass, we must account for flux divergence
     this is not so straight-forward, as PyGEM accounts for ice dynamics at the 
     end of each model year and not on a monthly timestep.
-    here, monthly mass change is determined assuming the flux divergence is constant
-    throughout the year.
+    here, monthly thickness and mass is determined assuming 
+    the flux divergence is constant throughout the year.
     
-    annual flux divergence is first estimated by combining the annual binned ice 
-    thickness and annual binned mass balance. then, assume flux divergence is constant 
-    throughout the year (divide annual by 12 to get monthly).
+    annual flux divergence is first estimated by combining the annual binned change in ice 
+    thickness and the annual binned mass balance. then, assume flux divergence is constant 
+    throughout the year (divide annual by 12 to get monthly flux divergence).
 
     monthly binned flux divergence can then be combined with 
-    monthly binned climatic mass balance to get monthly binned thickness
+    monthly binned climatic mass balance to get monthly binned change in ice thickness
 
+    
     Parameters
     ----------
     bin_massbalclim_monthly : float
@@ -115,8 +115,8 @@ def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bi
     bin_massbalclim_annual : float
         ndarray containing the climatic mass balance for each model year computed by PyGEM
         shape : [#glac, #elevbins, #years]
-    bin_volume_annual : float
-        ndarray containing the average (or median) binned ice volume computed by PyGEM
+    bin_mass_annual : float
+        ndarray containing the average (or median) binned ice mass computed by PyGEM
         shape : [#glac, #elevbins, #years]
     bin_thick_annual : float
         ndarray containing the average (or median) binned ice thickness at computed by PyGEM
@@ -128,8 +128,8 @@ def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bi
         ndarray containing the binned monthly ice thickness
         shape : [#glac, #elevbins, #years]
 
-    bin_volume_monthly: float
-        ndarray containing the binned monthly ice volume
+    bin_mass_monthly: float
+        ndarray containing the binned monthly ice mass
         shape : [#glac, #elevbins, #years]
     """
 
@@ -144,8 +144,8 @@ def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bi
             pygem_prms.density_water) - 
             delta_thick_annual)
 
-    # to get monthly mass change we need monthly flux divergence
-    # we'll assume the flux divergence is constant througohut the year,
+    ### to get monthly thickness and mass we need monthly flux divergence ###
+    # we'll assume the flux divergence is constant througohut the year (is this a good assumption?)
     # ie. take annual values and divide by 12 - use numpy tile to repeat monthly values by 12 months
     flux_div_monthly = np.tile(flux_div_annual / 12, 12)
 
@@ -156,12 +156,19 @@ def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bi
             pygem_prms.density_ice /
             pygem_prms.density_water) -
             flux_div_monthly)
+    
+    # get binned monthly thickness = running thickness change + initial thickness
+    running_delta_thick_monthly = np.cumsum(bin_thickchange_monthly, axis=-1)
+    bin_thick_monthly =  running_delta_thick_monthly + bin_thick_annual[:,:,0][:,:,np.newaxis] 
 
-    ### get monthly mass change ###
-    # note, this requires knowledge of glacier area to convert from thickness change to mass change
-    # we do not have monthly information on binned area, so we'll resort to using the annual binned
-    # glacier volume and thickness in order to get to binned glacier area
-    # use numpy divide where denominator is greater than 0 to avoid divide error
+    ### get monthly mass ###
+    # note, this requires knowledge of binned glacier area
+    # we do not have monthly binned area (as glacier dynamics are performed on an annual timestep in PyGEM),
+    # so we'll resort to using the annual binned glacier mass and thickness in order to get to binned glacier area
+    ########################
+    # first convert bin_mass_annual to bin_voluma_annual
+    bin_volume_annual = bin_mass_annual / pygem_prms.density_ice
+    # now get area: use numpy divide where denominator is greater than 0 to avoid divide error
     # note, indexing of [:,:,1:] so that annual area array has same shape as flux_div_annual
     bin_area_annual = np.divide(
             bin_volume_annual[:,:,1:], 
@@ -172,22 +179,13 @@ def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bi
     # tile to get monthly area, assuming area is constant thoughout the year
     bin_area_monthly = np.tile(bin_area_annual, 12)
 
-    # convert to volume change
-    bin_volchange_monthly = bin_thickchange_monthly * bin_area_monthly
-    
-    ### for consistency with other binned products, convert from deltas to monthly thickness and volume ###
-    # first get running changes
-    running_delta_thick_monthly = np.cumsum(bin_thickchange_monthly, axis=-1)
-    running_delta_volume_monthly = np.cumsum(bin_volchange_monthly, axis=-1)
+    # combine monthly thickess and area to get mass
+    bin_mass_monthly = bin_thick_monthly * bin_area_monthly * pygem_prms.density_ice
 
-    # add running changes to initial values to get monthly totals
-    bin_thick_monthly =  running_delta_thick_monthly + bin_thick_annual[:,:,0][:,:,np.newaxis] 
-    bin_volume_monthly = running_delta_volume_monthly + bin_volume_annual[:,:,0][:,:,np.newaxis]
-
-    return bin_thick_monthly, bin_volume_monthly
+    return bin_thick_monthly, bin_mass_monthly
 
 
-def update_xrdataset(input_ds, bin_thick_monthly, bin_volume_monthly):
+def update_xrdataset(input_ds, bin_thick_monthly, bin_mass_monthly):
     """
     update xarray dataset to add new fields
 
@@ -213,7 +211,7 @@ def update_xrdataset(input_ds, bin_thick_monthly, bin_volume_monthly):
     output_coords_dict = collections.OrderedDict()
     output_coords_dict['bin_thick_monthly'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
-    output_coords_dict['bin_volume_monthly'] = (
+    output_coords_dict['bin_mass_monthly'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
 
     # Attributes dictionary
@@ -223,11 +221,11 @@ def update_xrdataset(input_ds, bin_thick_monthly, bin_volume_monthly):
             'units': 'm',
             'temporal_resolution': 'monthly',
             'comment': 'monthly ice thickness binned by surface elevation'}
-    output_attrs_dict['bin_volume_monthly'] = {
-            'long_name': 'binned monthly ice volume',
-            'units': 'm3',
+    output_attrs_dict['bin_mass_monthly'] = {
+            'long_name': 'binned monthly ice mass',
+            'units': 'kg',
             'temporal_resolution': 'monthly',
-            'comment': 'monthly ice bolume binned by surface elevation'}
+            'comment': 'monthly ice mass binned by surface elevation'}
 
 
     # Add variables to empty dataset and merge together
@@ -258,8 +256,8 @@ def update_xrdataset(input_ds, bin_thick_monthly, bin_volume_monthly):
     output_ds_all['bin_thick_monthly'].values = (
             bin_thick_monthly
             )
-    output_ds_all['bin_volume_monthly'].values = (
-            bin_volume_monthly
+    output_ds_all['bin_mass_monthly'].values = (
+            bin_mass_monthly
             )
 
     return output_ds_all, encoding
@@ -275,7 +273,7 @@ def main(list_packed_vars):
     Returns
     -------
     binned_ds : netcdf Dataset
-        updated binned netcdf containing binned monthly change in mass
+        updated binned netcdf containing binned monthly ice thickness and mass
     """
     # Unpack variables
     parser = getparser()
@@ -335,15 +333,15 @@ def main(list_packed_vars):
         binned_ds = xr.open_dataset(output_sim_binned_fp + netcdf_fn)
 
         # calculate monthly change in mass
-        bin_thick_monthly, bin_volume_monthly = get_binned_monthly_thick(
+        bin_thick_monthly, bin_mass_monthly = get_binned_monthly(
                                                     binned_ds.bin_massbalclim_monthly.values, 
                                                     binned_ds.bin_massbalclim_annual.values, 
-                                                    binned_ds.bin_volume_annual.values,
+                                                    binned_ds.bin_mass_annual.values,
                                                     binned_ds.bin_thick_annual.values
                                                     )
 
         # update dataset to add monthly mass change
-        output_ds_binned, encoding_binned = update_xrdataset(binned_ds, bin_thick_monthly, bin_volume_monthly)
+        output_ds_binned, encoding_binned = update_xrdataset(binned_ds, bin_thick_monthly, bin_mass_monthly)
 
         # close input ds before write
         binned_ds.close()
