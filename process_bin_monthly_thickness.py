@@ -89,9 +89,9 @@ def getparser():
 
 
 
-def get_binned_monthly_change(bin_massbalclim_monthly, bin_massbalclim_annual, bin_volume_annual, bin_thick_annual):
+def get_binned_monthly_thick(bin_massbalclim_monthly, bin_massbalclim_annual, bin_volume_annual, bin_thick_annual):
     """
-    funciton to calculate the monthly binned change in mass  ice thickness
+    funciton to calculate the monthly binned ice thickness
     from annual climatic mass balance and annual ice thickness products
 
     to determine monthly change in mass, we must account for flux divergence
@@ -111,22 +111,26 @@ def get_binned_monthly_change(bin_massbalclim_monthly, bin_massbalclim_annual, b
     ----------
     bin_massbalclim_monthly : float
         ndarray containing the climatic mass balance for each model month computed by PyGEM
-        shape : [#glac, # elevbins, #months]
+        shape : [#glac, #elevbins, #months]
     bin_massbalclim_annual : float
         ndarray containing the climatic mass balance for each model year computed by PyGEM
-        shape : [#glac, # elevbins, #years]
+        shape : [#glac, #elevbins, #years]
     bin_volume_annual : float
         ndarray containing the average (or median) binned ice volume computed by PyGEM
-        shape : [#glac, # elevbins, #years]
+        shape : [#glac, #elevbins, #years]
     bin_thick_annual : float
         ndarray containing the average (or median) binned ice thickness at computed by PyGEM
-        shape : [#glac, # elevbins, #years]
+        shape : [#glac, #elevbins, #years]
 
     Returns
     -------
-    bin_masschange_monthly: float
-        ndarray containing the monthly change in mass
-        shape : [#glac, # elevbins, #years]
+    bin_thick_monthly: float
+        ndarray containing the binned monthly ice thickness
+        shape : [#glac, #elevbins, #years]
+
+    bin_volume_monthly: float
+        ndarray containing the binned monthly ice volume
+        shape : [#glac, #elevbins, #years]
     """
 
     # get change in thickness from previous year for each elevation bin
@@ -168,16 +172,22 @@ def get_binned_monthly_change(bin_massbalclim_monthly, bin_massbalclim_annual, b
     # tile to get monthly area, assuming area is constant thoughout the year
     bin_area_monthly = np.tile(bin_area_annual, 12)
 
-    # convert to mass change
-    bin_masschange_monthly = (
-            bin_thickchange_monthly * 
-            bin_area_monthly *
-            pygem_prms.density_ice)
+    # convert to volume change
+    bin_volchange_monthly = bin_thickchange_monthly * bin_area_monthly
+    
+    ### for consistency with other binned products, convert from deltas to monthly thickness and volume ###
+    # first get running changes
+    running_delta_thick_monthly = np.cumsum(bin_thickchange_monthly, axis=-1)
+    running_delta_volume_monthly = np.cumsum(bin_volchange_monthly, axis=-1)
 
-    return bin_thickchange_monthly, bin_masschange_monthly
+    # add running changes to initial values to get monthly totals
+    bin_thick_monthly =  running_delta_thick_monthly + bin_thick_annual[:,:,0][:,:,np.newaxis] 
+    bin_volume_monthly = running_delta_volume_monthly + bin_volume_annual[:,:,0][:,:,np.newaxis]
+
+    return bin_thick_monthly, bin_volume_monthly
 
 
-def update_xrdataset(input_ds, bin_thickchange_monthly, bin_masschange_monthly):
+def update_xrdataset(input_ds, bin_thick_monthly, bin_volume_monthly):
     """
     update xarray dataset to add new fields
 
@@ -201,23 +211,23 @@ def update_xrdataset(input_ds, bin_thickchange_monthly, bin_masschange_monthly):
     bin_values = input_ds.bin.values
 
     output_coords_dict = collections.OrderedDict()
-    output_coords_dict['bin_thickchange_monthly'] = (
+    output_coords_dict['bin_thick_monthly'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
-    output_coords_dict['bin_masschange_monthly'] = (
+    output_coords_dict['bin_volume_monthly'] = (
             collections.OrderedDict([('glac', glac_values), ('bin',bin_values), ('time', time_values)]))
 
     # Attributes dictionary
     output_attrs_dict = {}
-    output_attrs_dict['bin_thickchange_monthly'] = {
-            'long_name': 'binned monthly chamge in thickness',
+    output_attrs_dict['bin_thick_monthly'] = {
+            'long_name': 'binned monthly ice thickness',
             'units': 'm',
             'temporal_resolution': 'monthly',
-            'comment': 'monthly change in glacier thickness binned by surface elevation'}
-    output_attrs_dict['bin_masschange_monthly'] = {
-            'long_name': 'binned monthly chamge in mass',
-            'units': 'kg',
+            'comment': 'monthly ice thickness binned by surface elevation'}
+    output_attrs_dict['bin_volume_monthly'] = {
+            'long_name': 'binned monthly ice volume',
+            'units': 'm3',
             'temporal_resolution': 'monthly',
-            'comment': 'monthly change in glacier mass binned by surface elevation'}
+            'comment': 'monthly ice bolume binned by surface elevation'}
 
 
     # Add variables to empty dataset and merge together
@@ -245,11 +255,11 @@ def update_xrdataset(input_ds, bin_thickchange_monthly, bin_masschange_monthly):
                         'complevel':9
                         }    
 
-    output_ds_all['bin_thickchange_monthly'].values = (
-            bin_thickchange_monthly
+    output_ds_all['bin_thick_monthly'].values = (
+            bin_thick_monthly
             )
-    output_ds_all['bin_masschange_monthly'].values = (
-            bin_masschange_monthly
+    output_ds_all['bin_volume_monthly'].values = (
+            bin_volume_monthly
             )
 
     return output_ds_all, encoding
@@ -325,7 +335,7 @@ def main(list_packed_vars):
         binned_ds = xr.open_dataset(output_sim_binned_fp + netcdf_fn)
 
         # calculate monthly change in mass
-        bin_thickchange_monthly, bin_masschange_monthly = get_binned_monthly_change(
+        bin_thick_monthly, bin_volume_monthly = get_binned_monthly_thick(
                                                     binned_ds.bin_massbalclim_monthly.values, 
                                                     binned_ds.bin_massbalclim_annual.values, 
                                                     binned_ds.bin_volume_annual.values,
@@ -333,7 +343,7 @@ def main(list_packed_vars):
                                                     )
 
         # update dataset to add monthly mass change
-        output_ds_binned, encoding_binned = update_xrdataset(binned_ds, bin_thickchange_monthly, bin_masschange_monthly)
+        output_ds_binned, encoding_binned = update_xrdataset(binned_ds, bin_thick_monthly, bin_volume_monthly)
 
         # close input ds before write
         binned_ds.close()
@@ -341,7 +351,7 @@ def main(list_packed_vars):
         # append to existing binned netcdf
         output_ds_binned.to_netcdf(output_sim_binned_fp + netcdf_fn, mode='a', encoding=encoding_binned, engine='netcdf4')
 
-        # Close datasets
+        # close datasets
         output_ds_binned.close()
 
     return

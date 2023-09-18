@@ -15,6 +15,7 @@ import multiprocessing
 import os
 import sys
 import time
+import cftime
 # External libraries
 import pandas as pd
 import pickle
@@ -26,7 +27,6 @@ import xarray as xr
 try:
     import pygem
 except:
-    print('---------\nPyGEM DEV\n---------')
     sys.path.append(os.getcwd() + '/../PyGEM/')
 
 # Local libraries
@@ -207,6 +207,8 @@ def create_xrdataset(glacier_rgi_table, dates_table, option_wateryear=pygem_prms
         year_type = 'custom year'
        
     time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+    time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in time_values]
+
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
     year_values = np.concatenate((year_values, np.array([annual_columns[-1] + 1])))
@@ -621,6 +623,8 @@ def create_xrdataset_essential_sims(glacier_rgi_table, dates_table, option_water
         year_type = 'custom year'
 
     time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+    time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in time_values]
+
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
     year_values = np.concatenate((year_values, np.array([annual_columns[-1] + 1])))
@@ -775,6 +779,7 @@ def create_xrdataset_binned_stats(glacier_rgi_table, dates_table, surface_h_init
         year_type = 'custom year'
 
     time_values = dates_table.loc[pygem_prms.gcm_spinupyears*12:dates_table.shape[0]+1,'date'].tolist()
+    time_values = [cftime.DatetimeNoLeap(x.year, x.month, x.day) for x in time_values]
 
     # append additional year to year_values to account for volume and area at end of period
     year_values = annual_columns[pygem_prms.gcm_spinupyears:annual_columns.shape[0]]
@@ -1059,7 +1064,10 @@ def main(list_packed_vars):
     ref_prec, ref_dates = ref_gcm.importGCMvarnearestneighbor_xarray(ref_gcm.prec_fn, ref_gcm.prec_vn,
                                                                      main_glac_rgi, dates_table_ref_bc)
     # Elevation [m asl]
-    gcm_elev = gcm.importGCMfxnearestneighbor_xarray(gcm.elev_fn, gcm.elev_vn, main_glac_rgi)
+    try:
+        gcm_elev = gcm.importGCMfxnearestneighbor_xarray(gcm.elev_fn, gcm.elev_vn, main_glac_rgi)
+    except:
+        gcm_elev = None
     ref_elev = ref_gcm.importGCMfxnearestneighbor_xarray(ref_gcm.elev_fn, ref_gcm.elev_vn, main_glac_rgi)
     
     # ----- Temperature and Precipitation Bias Adjustments -----
@@ -1114,6 +1122,9 @@ def main(list_packed_vars):
                                                                       ref_spinupyears=pygem_prms.ref_spinupyears,
                                                                       gcm_spinupyears=pygem_prms.gcm_spinupyears)
     
+    # assert that the gcm_elev_adj is not None
+    assert gcm_elev_adj is not None, 'No GCM elevation data'
+
     # ----- Update Reference Period to be consistent with calibration period -----
     if pygem_prms.ref_startyear != args.gcm_bc_startyear:
         if pygem_prms.gcm_wateryear == 'hydro':

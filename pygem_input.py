@@ -1,7 +1,7 @@
 ﻿"""Model inputs to run PyGEM"""
 
 # Built-in libraries
-import os
+import os, sys
 from datetime import datetime
 # External libraries
 import numpy as np
