@@ -100,6 +100,12 @@ def getparser():
     """
     parser = argparse.ArgumentParser(description="run simulations from gcm list in parallel")
     # add arguments
+    parser.add_argument('-rgi_region01', type=int, default=None,
+                        help='Randoph Glacier Inventory region')
+    parser.add_argument('-rgi_glac_number', type=str, default=None,
+                        help='Randoph Glacier Inventory region')
+    parser.add_argument('-rgi_glac_number_fn', action='store', type=str, default=None,
+                        help='Filename containing list of rgi_glac_number, helpful for running batches on spc')
     parser.add_argument('-gcm_list_fn', action='store', type=str, default=pygem_prms.ref_gcm_name,
                         help='text file full of commands to run')
     parser.add_argument('-gcm_name', action='store', type=str, default=None,
@@ -118,18 +124,19 @@ def getparser():
                         help='start year for the model run')
     parser.add_argument('-num_simultaneous_processes', action='store', type=int, default=4,
                         help='number of simultaneous processes (cores) to use')
-    parser.add_argument('-option_parallels', action='store', type=int, default=1,
-                        help='Switch to use or not use parallels (1 - use parallels, 0 - do not)')
-    parser.add_argument('-rgi_glac_number_fn', action='store', type=str, default=None,
-                        help='Filename containing list of rgi_glac_number, helpful for running batches on spc')
     parser.add_argument('-batch_number', action='store', type=int, default=None,
                         help='Batch number used to differentiate output on supercomputer')
-    parser.add_argument('-option_ordered', action='store', type=int, default=1,
-                        help='switch to keep lists ordered or not')
-    parser.add_argument('-debug', action='store', type=int, default=0,
-                        help='Boolean for debugging to turn it on or off (default 0 is off')
-    parser.add_argument('-debug_spc', action='store', type=int, default=0,
-                        help='Boolean for debugging to turn it on or off (default 0 is off')
+    # flags
+    parser.add_argument('-option_ordered', action='store_true',
+                        help='Flag to keep glacier lists ordered (default is off)')
+    parser.add_argument('-option_parallels', action='store_true',
+                        help='Flag to use or not use parallels (default is off)')
+    parser.add_argument('-debug', action='store_true',
+                        help='Flag for debugging (default is off')
+    parser.add_argument('-debug_spc', action='store_true',
+                        help='Flag for debugging (default is off')
+
+
     return parser
 
 
@@ -976,7 +983,7 @@ def main(list_packed_vars):
     if debug:
         if 'scenario' in locals():
             print(scenario)
-    if args.debug_spc == 1:
+    if args.debug_spc:
         debug_spc = True
     else:
         debug_spc = False
@@ -1401,7 +1408,7 @@ def main(list_packed_vars):
 
                     #%%
                     # ----- ICE THICKNESS INVERSION using OGGM -----
-                    if not pygem_prms.option_dynamics is None:
+                    if pygem_prms.option_dynamics is not None:
                         # Apply inversion_filter on mass balance with debris to avoid negative flux
                         if pygem_prms.include_debris:
                             inversion_filter = True
@@ -1452,6 +1459,13 @@ def main(list_packed_vars):
                                 nfls = gdir.read_pickle('model_flowlines')
                             else:
                                 raise
+
+                        # Water Level
+                        # Check that water level is within given bounds
+                        cls = gdir.read_pickle('inversion_input')[-1]
+                        th = cls['hgt'][-1]
+                        vmin, vmax = cfg.PARAMS['free_board_marine_terminating']
+                        water_level = utils.clip_scalar(0, th - vmax, th - vmin) 
                     
                     # No ice dynamics options
                     else:
@@ -1459,13 +1473,6 @@ def main(list_packed_vars):
                         
                     # Record initial surface h for overdeepening calculations
                     surface_h_initial = nfls[0].surface_h
-                    
-                    # Water Level
-                    # Check that water level is within given bounds
-                    cls = gdir.read_pickle('inversion_input')[-1]
-                    th = cls['hgt'][-1]
-                    vmin, vmax = cfg.PARAMS['free_board_marine_terminating']
-                    water_level = utils.clip_scalar(0, th - vmax, th - vmin) 
                     
                     # ------ MODEL WITH EVOLVING AREA ------
                     # Mass balance model
@@ -1550,10 +1557,10 @@ def main(list_packed_vars):
                                                 water_level=water_level,
                                                 spinupyears=pygem_prms.ref_spinupyears
                                                 )
-                                if oggm_version > 1.301:
-                                    diag = ev_model.run_until_and_store(nyears)
-                                else:
-                                    _, diag = ev_model.run_until_and_store(nyears)
+                                # if oggm_version > 1.301:
+                                #     diag = ev_model.run_until_and_store(nyears)
+                                # else:
+                                _, diag = ev_model.run_until_and_store(nyears)
                                 ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                                 ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
                 
@@ -1581,10 +1588,10 @@ def main(list_packed_vars):
                                                 is_tidewater=gdir.is_tidewater,
                                                 water_level=water_level
                                                 )
-                                if oggm_version > 1.301:
-                                    diag = ev_model.run_until_and_store(nyears)
-                                else:
-                                    _, diag = ev_model.run_until_and_store(nyears)
+                                # if oggm_version > 1.301:
+                                #     diag = ev_model.run_until_and_store(nyears)
+                                # else:
+                                _, diag = ev_model.run_until_and_store(nyears)
                                 ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                                 ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
                 
@@ -1621,10 +1628,10 @@ def main(list_packed_vars):
                             graphics.plot_modeloutput_section(ev_model)
                            
                         try:
-                            if oggm_version > 1.301:
-                                diag = ev_model.run_until_and_store(nyears)
-                            else:
-                                _, diag = ev_model.run_until_and_store(nyears)
+                            # if oggm_version > 1.301:
+                            #     diag = ev_model.run_until_and_store(nyears)
+                            # else:
+                            _, diag = ev_model.run_until_and_store(nyears)
 #                            print('shape of volume:', ev_model.mb_model.glac_wide_volume_annual.shape, diag.volume_m3.shape)
                             ev_model.mb_model.glac_wide_volume_annual = diag.volume_m3.values
                             ev_model.mb_model.glac_wide_area_annual = diag.area_m2.values
@@ -2031,7 +2038,7 @@ def main(list_packed_vars):
                 text_file.write(glacier_str + f' failed to complete simulation: {err}')
 
     # Global variables for Spyder development
-    if args.option_parallels == 0:
+    if not args.option_parallels:
         global main_vars
         main_vars = inspect.currentframe().f_locals
 
@@ -2051,9 +2058,19 @@ if __name__ == '__main__':
         cfg.BASENAMES['pygem_modelprms'] = ('pygem_modelprms.pkl', 'PyGEM model parameters')
 
     # RGI glacier number
-    if args.rgi_glac_number_fn is not None:
+    if args.rgi_glac_number:
+        glac_no = [args.rgi_glac_number]
+    elif args.rgi_glac_number_fn is not None:
         with open(args.rgi_glac_number_fn, 'rb') as f:
             glac_no = pickle.load(f)
+    elif args.rgi_region01:
+        main_glac_rgi_all = modelsetup.selectglaciersrgitable(
+                rgi_regionsO1=[args.rgi_region01], rgi_regionsO2=pygem_prms.rgi_regionsO2,
+                rgi_glac_number=pygem_prms.rgi_glac_number, glac_no=pygem_prms.glac_no,
+                include_landterm=pygem_prms.include_landterm, include_laketerm=pygem_prms.include_laketerm, 
+                include_tidewater=pygem_prms.include_tidewater, 
+                min_glac_area_km2=pygem_prms.min_glac_area_km2)        
+        glac_no = list(main_glac_rgi_all['rgino_str'].values)
     elif pygem_prms.glac_no is not None:
         glac_no = pygem_prms.glac_no
     else:
@@ -2066,7 +2083,7 @@ if __name__ == '__main__':
         glac_no = list(main_glac_rgi_all['rgino_str'].values)
 
     # Number of cores for parallel processing
-    if args.option_parallels != 0:
+    if args.option_parallels:
         num_cores = int(np.min([len(glac_no), args.num_simultaneous_processes]))
     else:
         num_cores = 1
@@ -2121,7 +2138,7 @@ if __name__ == '__main__':
         print('len list packed vars:', len(list_packed_vars))
            
         # Parallel processing
-        if args.option_parallels != 0:
+        if args.option_parallels:
             print('Processing in parallel with ' + str(args.num_simultaneous_processes) + ' cores...')
             with multiprocessing.Pool(args.num_simultaneous_processes) as p:
                 p.map(main,list_packed_vars)

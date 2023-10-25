@@ -3,6 +3,7 @@
 # Built-in libraries
 import argparse
 import os
+import pickle
 import sys
 import time
 import multiprocessing
@@ -39,13 +40,19 @@ def getparser():
     Object containing arguments and their respective values.
     """
     parser = argparse.ArgumentParser(description="run simulations from gcm list in parallel")
-    parser.add_argument('-glacno', action='store', type=str, default=None,
+    parser.add_argument('-rgi_glac_number', action='store', type=str, default=None,
                         help='glacier number used for model run')
+    parser.add_argument('-rgi_region01', action='store', type=int, default=None,
+                        help='RGI 01 region number')
+    parser.add_argument('-rgi_glac_number_fn', action='store', type=str, default=None,
+                        help='Filename containing list of rgi_glac_number, helpful for running batches on spc')
     parser.add_argument('-num_simultaneous_processes', action='store', type=int, default=1,
                         help='number of simultaneous processes (cores) to use')
+    parser.add_argument('-reset', action='store_true', help='Flag to reset glacier directory')
+
     return parser
 
-def main(glac_nos):
+def main(main_glac_rgi, reset):
     '''
 
     Parameters
@@ -59,7 +66,7 @@ def main(glac_nos):
 
     '''
     # ===== LOAD GLACIERS =====
-    main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_nos)
+    glac_nos = list(main_glac_rgi['rgino_str'].values)
 
     # loop through list
     for nglac, glacno in enumerate(glac_nos):
@@ -74,10 +81,10 @@ def main(glac_nos):
             is_tidewater = True
         try:
             if not is_tidewater or not pygem_prms.include_calving:
-                gdir = single_flowline_glacier_directory(glacno, logging_level=pygem_prms.logging_level)
+                gdir = single_flowline_glacier_directory(glacno, reset=reset, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = False
             else:
-                gdir = single_flowline_glacier_directory_with_calving(glacno, logging_level=pygem_prms.logging_level)
+                gdir = single_flowline_glacier_directory_with_calving(glacno, reset=reset, logging_level=pygem_prms.logging_level)
                 gdir.is_tidewater = True
         except Exception as err:
             print('preprocess_load_gdirs error:\t' + str(err))
@@ -86,31 +93,61 @@ if __name__ == '__main__':
     time_start = time.time()
     parser = getparser()
     args = parser.parse_args()
+    reset=args.reset
 
-    glacno = args.glacno
-    if glacno is None:
-        glacno = pygem_prms.glac_no
+    if args.rgi_glac_number:
+        glac_no = [args.rgi_glac_number]
+        main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no,
+                rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
+                rgi_glac_number=pygem_prms.rgi_glac_number, include_landterm=pygem_prms.include_landterm,
+                include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater)
+    elif args.rgi_glac_number_fn:
+        with open(args.rgi_glac_number_fn, 'rb') as f:
+            glac_no = pickle.load(f)
+            main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no,
+                    rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
+                    rgi_glac_number=pygem_prms.rgi_glac_number, include_landterm=pygem_prms.include_landterm,
+                    include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater)
+    elif args.rgi_region01:
+        main_glac_rgi = modelsetup.selectglaciersrgitable(
+                rgi_regionsO1=[args.rgi_region01], rgi_regionsO2=pygem_prms.rgi_regionsO2,
+                rgi_glac_number=pygem_prms.rgi_glac_number, glac_no=pygem_prms.glac_no,
+                include_landterm=pygem_prms.include_landterm, include_laketerm=pygem_prms.include_laketerm, 
+                include_tidewater=pygem_prms.include_tidewater, 
+                min_glac_area_km2=pygem_prms.min_glac_area_km2)        
     else: 
-        glacno = [glacno]
-    
-    main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glacno,
-            rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
-            rgi_glac_number=pygem_prms.rgi_glac_number, include_landterm=pygem_prms.include_landterm,
-            include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater)
+        glac_no = [pygem_prms.glac_no]
+        main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no,
+                rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
+                rgi_glac_number=pygem_prms.rgi_glac_number, include_landterm=pygem_prms.include_landterm,
+                include_laketerm=pygem_prms.include_laketerm, include_tidewater=pygem_prms.include_tidewater)
+        
     glac_nos = list(main_glac_rgi['rgino_str'].values)
+
     ### parallel processing ###
     if args.num_simultaneous_processes > 1:
         num_simultaneous_processes = int(np.min([len(glac_nos), args.num_simultaneous_processes]))
     else:
         num_simultaneous_processes = 1
 
-    # Glacier number lists to pass for parallel processing
+    # split glacier number lists
     glac_no_lsts = modelsetup.split_list(glac_nos, n=num_simultaneous_processes, group_thousands=True)
-    # print(glac_no_lsts[0])
-    # print(len(glac_nos), sum([len(l) for l in glac_no_lsts]))
+
+    # split main_glac_rgi table into subtables
+    main_glac_rgi_sublists = [main_glac_rgi.loc[main_glac_rgi.apply(lambda x: x.rgino_str in sublist, axis=1)] for sublist in glac_no_lsts]
 
     print(f'Processing in parallel with {num_simultaneous_processes} cores...')
-    with multiprocessing.Pool(num_simultaneous_processes) as p:
-        p.map(main, glac_no_lsts)
+    # with multiprocessing.Pool(num_simultaneous_processes) as p:
+    #     for main_glac_rgi in main_glac_rgi_sublists:
+    #         print(main_glac_rgi)
+    #         p.apply_async(main, args=(main_glac_rgi, args.reset))
+    #     # p.apply_async(main, args=(glac_no_lsts, args.reset))
+
+    jobs = []
+    for i, main_glac_rgi in enumerate(main_glac_rgi_sublists):
+        j = multiprocessing.Process(target=main, args=(main_glac_rgi, args.reset))
+        jobs.append(j)
+    for j in jobs:
+        j.start()
 
     print('Total processing time:', time.time()-time_start, 's')
