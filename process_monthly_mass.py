@@ -19,31 +19,35 @@ try:
     import pygem
 except:
     sys.path.append(os.getcwd() + '/../PyGEM/')
+    import pygem
 
 # Local libraries
 import pygem_input as pygem_prms
 import pygem.pygem_modelsetup as modelsetup
 
 
-def get_monthly_mass(glac_annual_mass, glac_massbaltotal_monthly):
+def get_monthly_mass(glac_mass_annual, glac_massbaltotal_monthly):
     """
     funciton to calculate the monthly glacier mass
     from annual glacier mass and monthly total mass balance
 
     Parameters
     ----------
-    glac_annual_mass : float
+    glac_mass_annual : float
         ndarray containing the annual glacier mass for each year computed by PyGEM
-        shape : [#glac, #years]
+        shape: [#glac, #years]
+        unit: kg
     glac_massbaltotal_monthly : float
         ndarray containing the monthly total mass balance computed by PyGEM
-        shape : [#glac, #months]
+        shape: [#glac, #months]
+        unit: kg
 
     Returns
     -------
-    glac_monthly_mass: float
+    glac_mass_monthly: float
         ndarray containing the monthly glacier mass
         shape : [#glac, #months]
+        unit: kg
 
     """
     # get running total monthly mass balance - reshape into subarrays of all values for a given year, then take cumulative sum
@@ -51,15 +55,15 @@ def get_monthly_mass(glac_annual_mass, glac_massbaltotal_monthly):
     running_glac_massbaltotal_monthly = np.reshape(glac_massbaltotal_monthly, (-1,12), order='C').cumsum(axis=-1).reshape(oshape)
 
     # tile annual mass to then superimpose atop running glacier mass balance (trim off final year from annual mass)
-    glac_monthly_mass = np.repeat(glac_annual_mass[:,:-1], 12, axis=-1)
+    glac_mass_monthly = np.repeat(glac_mass_annual[:,:-1], 12, axis=-1)
 
     # add annual mass values to running glacier mass balance
-    glac_monthly_mass += running_glac_massbaltotal_monthly
+    glac_mass_monthly += running_glac_massbaltotal_monthly
 
-    return glac_monthly_mass
+    return glac_mass_monthly
 
 
-def update_xrdataset(input_ds, glac_monthly_mass):
+def update_xrdataset(input_ds, glac_mass_monthly):
     """
     update xarray dataset to add new fields
 
@@ -82,12 +86,12 @@ def update_xrdataset(input_ds, glac_monthly_mass):
     time_values = input_ds.time.values
 
     output_coords_dict = collections.OrderedDict()
-    output_coords_dict['glac_monthly_mass'] = (
+    output_coords_dict['glac_mass_monthly'] = (
             collections.OrderedDict([('glac', glac_values), ('time', time_values)]))
 
     # Attributes dictionary
     output_attrs_dict = {}
-    output_attrs_dict['glac_monthly_mass'] = {
+    output_attrs_dict['glac_mass_monthly'] = {
             'long_name': 'glacier mass',
             'units': 'kg',
             'temporal_resolution': 'monthly',
@@ -119,8 +123,8 @@ def update_xrdataset(input_ds, glac_monthly_mass):
                         'complevel':9
                         }    
 
-    output_ds_all['glac_monthly_mass'].values = (
-            glac_monthly_mass
+    output_ds_all['glac_mass_monthly'].values = (
+            glac_mass_monthly
             )
 
     return output_ds_all, encoding
@@ -194,15 +198,15 @@ def main(list_packed_vars):
             # open dataset
             statsds = xr.open_dataset(output_sim_stats_fp + netcdf_fn)
 
-            # calculate monthly mass
-            glac_monthly_mass = get_monthly_mass(
+            # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
+            glac_mass_monthly = get_monthly_mass(
                                                 statsds.glac_mass_annual.values, 
-                                                statsds.glac_massbaltotal_monthly.values, 
+                                                statsds.glac_massbaltotal_monthly.values * pygem_prms.density_ice, 
                                                 )
             statsds.close()
 
             # update dataset to add monthly mass change
-            output_ds_stats, encoding = update_xrdataset(statsds, glac_monthly_mass)
+            output_ds_stats, encoding = update_xrdataset(statsds, glac_mass_monthly)
 
             # close input ds before write
             statsds.close()
