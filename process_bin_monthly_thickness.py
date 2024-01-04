@@ -7,6 +7,7 @@ import copy
 import inspect
 import multiprocessing
 import os
+import glob
 import sys
 import time
 # External libraries
@@ -59,6 +60,8 @@ def getparser():
     """
     parser = argparse.ArgumentParser(description="run simulations from gcm list in parallel")
     # add arguments
+    parser.add_argument('-binned_simdir', action='store', type=str, default=None,
+                        help='Directory with binned simulations for which to process monthly thickness')
     parser.add_argument('-gcm_list_fn', action='store', type=str, default=pygem_prms.ref_gcm_name,
                         help='text file full of commands to run')
     parser.add_argument('-gcm_name', action='store', type=str, default=None,
@@ -77,12 +80,12 @@ def getparser():
                         help='start year for the model run')
     parser.add_argument('-num_simultaneous_processes', action='store', type=int, default=4,
                         help='number of simultaneous processes (cores) to use')
-    parser.add_argument('-option_parallels', action='store', type=int, default=1,
-                        help='Switch to use or not use parallels (1 - use parallels, 0 - do not)')
     parser.add_argument('-rgi_glac_number_fn', action='store', type=str, default=None,
                         help='Filename containing list of rgi_glac_number, helpful for running batches on spc')
-    parser.add_argument('-option_ordered', action='store', type=int, default=1,
-                        help='switch to keep lists ordered or not')
+    parser.add_argument('-option_ordered', action='store_true',
+                        help='Flag to keep glacier lists ordered (default is off)')
+    parser.add_argument('-option_parallels', action='store_true',
+                        help='Flag to use or not use parallels (default is off)')
 
     return parser
 
@@ -275,62 +278,89 @@ def main(list_packed_vars):
     binned_ds : netcdf Dataset
         updated binned netcdf containing binned monthly ice thickness and mass
     """
-    # Unpack variables
-    parser = getparser()
-    args = parser.parse_args()
-    count = list_packed_vars[0]
-    glac_no = list_packed_vars[1]
-    gcm_name = list_packed_vars[2]
-    realization = list_packed_vars[3]
-    if (gcm_name != pygem_prms.ref_gcm_name) and (args.scenario is None):
-        scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
-    elif not args.scenario is None:
-        scenario = args.scenario
-    
-    # ===== LOAD GLACIERS =====
-    main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no)
 
-    for glac in range(main_glac_rgi.shape[0]):
-        if glac == 0:
-            print(gcm_name,':', main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId'])
-        # Select subsets of data
-        glacier_rgi_table = main_glac_rgi.loc[main_glac_rgi.index.values[glac], :]
-        glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
-        reg_str = str(glacier_rgi_table.O1Region).zfill(2)
-        rgiid = main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId']
+    if isinstance(list_packed_vars,list):
+        # Unpack variables
+        parser = getparser()
+        args = parser.parse_args()
+        count = list_packed_vars[0]
+        glac_no = list_packed_vars[1]
+        gcm_name = list_packed_vars[2]
+        realization = list_packed_vars[3]
+        if (gcm_name != pygem_prms.ref_gcm_name) and (args.scenario is None):
+            scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
+        elif not args.scenario is None:
+            scenario = args.scenario
+        
+        # ===== LOAD GLACIERS =====
+        main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no)
 
-        # get datapath to binned datasets produced from run_simulation.py
-        output_sim_binned_fp = pygem_prms.output_sim_fp + reg_str + '/' + gcm_name + '/'
-        if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-            output_sim_binned_fp += scenario + '/'
-        output_sim_binned_fp += 'binned/'
-        # Create filepath if it does not exist
-        if os.path.exists(output_sim_binned_fp) == False:
-            os.makedirs(output_sim_binned_fp, exist_ok=True)
-        # Number of simulations
-        if pygem_prms.option_calibration == 'MCMC':
-            sim_iters = pygem_prms.sim_iters
-        else:
-            sim_iters = 1
-        # Netcdf filename
-        if gcm_name in ['ERA-Interim', 'ERA5', 'COAWST']:
-            # Filename
-            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
-                            str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                            str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
-        elif realization is not None:
-            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
-                            str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                            '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                            str(args.gcm_endyear) + '_binned.nc')
-        else:
-            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
-                            str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
-                            '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
-                            str(args.gcm_endyear) + '_binned.nc')
+        for glac in range(main_glac_rgi.shape[0]):
+            if glac == 0:
+                print(gcm_name,':', main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId'])
+            # Select subsets of data
+            glacier_rgi_table = main_glac_rgi.loc[main_glac_rgi.index.values[glac], :]
+            glacier_str = '{0:0.5f}'.format(glacier_rgi_table['RGIId_float'])
+            reg_str = str(glacier_rgi_table.O1Region).zfill(2)
+            rgiid = main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId']
 
+            # get datapath to binned datasets produced from run_simulation.py
+            output_sim_binned_fp = pygem_prms.output_sim_fp + reg_str + '/' + gcm_name + '/'
+            if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+                output_sim_binned_fp += scenario + '/'
+            output_sim_binned_fp += 'binned/'
+            # Create filepath if it does not exist
+            if os.path.exists(output_sim_binned_fp) == False:
+                os.makedirs(output_sim_binned_fp, exist_ok=True)
+            # Number of simulations
+            if pygem_prms.option_calibration == 'MCMC':
+                sim_iters = pygem_prms.sim_iters
+            else:
+                sim_iters = 1
+            # Netcdf filename
+            if gcm_name in ['ERA-Interim', 'ERA5', 'COAWST']:
+                # Filename
+                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
+                                str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
+                                str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
+            elif realization is not None:
+                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
+                                str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
+                                '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                str(args.gcm_endyear) + '_binned.nc')
+            else:
+                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' +
+                                str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
+                                '_' + str(sim_iters) + 'sets' + '_' + str(args.gcm_bc_startyear) + '_' + 
+                                str(args.gcm_endyear) + '_binned.nc')
+
+            # open dataset
+            binned_ds = xr.open_dataset(output_sim_binned_fp + netcdf_fn)
+
+            # calculate monthly change in mass
+            bin_thick_monthly, bin_mass_monthly = get_binned_monthly(
+                                                        binned_ds.bin_massbalclim_monthly.values, 
+                                                        binned_ds.bin_massbalclim_annual.values, 
+                                                        binned_ds.bin_mass_annual.values,
+                                                        binned_ds.bin_thick_annual.values
+                                                        )
+
+            # update dataset to add monthly mass change
+            output_ds_binned, encoding_binned = update_xrdataset(binned_ds, bin_thick_monthly, bin_mass_monthly)
+
+            # close input ds before write
+            binned_ds.close()
+
+            # append to existing binned netcdf
+            output_ds_binned.to_netcdf(output_sim_binned_fp + netcdf_fn, mode='a', encoding=encoding_binned, engine='netcdf4')
+
+            # close datasets
+            output_ds_binned.close()
+
+    elif os.path.isfile(list_packed_vars):
+        netcdf_fn = list_packed_vars
         # open dataset
-        binned_ds = xr.open_dataset(output_sim_binned_fp + netcdf_fn)
+        binned_ds = xr.open_dataset(netcdf_fn)
 
         # calculate monthly change in mass
         bin_thick_monthly, bin_mass_monthly = get_binned_monthly(
@@ -347,7 +377,7 @@ def main(list_packed_vars):
         binned_ds.close()
 
         # append to existing binned netcdf
-        output_ds_binned.to_netcdf(output_sim_binned_fp + netcdf_fn, mode='a', encoding=encoding_binned, engine='netcdf4')
+        output_ds_binned.to_netcdf(netcdf_fn, mode='a', encoding=encoding_binned, engine='netcdf4')
 
         # close datasets
         output_ds_binned.close()
@@ -360,86 +390,101 @@ if __name__ == '__main__':
     time_start = time.time()
     args = getparser().parse_args()
 
+    if args.binned_simdir:
+        # get list of sims
+        simlist = glob.glob(args.binned_simdir+'*.nc')
 
-    # RGI glacier number
-    if args.rgi_glac_number_fn is not None:
-        with open(args.rgi_glac_number_fn, 'rb') as f:
-            glac_no = pickle.load(f)
-    elif pygem_prms.glac_no is not None:
-        glac_no = pygem_prms.glac_no
-    else:
-        main_glac_rgi_all = modelsetup.selectglaciersrgitable(
-                rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
-                rgi_glac_number=pygem_prms.rgi_glac_number, glac_no=pygem_prms.glac_no,
-                include_landterm=pygem_prms.include_landterm, include_laketerm=pygem_prms.include_laketerm, 
-                include_tidewater=pygem_prms.include_tidewater, 
-                min_glac_area_km2=pygem_prms.min_glac_area_km2)
-        glac_no = list(main_glac_rgi_all['rgino_str'].values)
-
-    # Number of cores for parallel processing
-    if args.option_parallels != 0:
-        num_cores = int(np.min([len(glac_no), args.num_simultaneous_processes]))
-    else:
-        num_cores = 1
-
-    # Glacier number lists to pass for parallel processing
-    glac_no_lsts = modelsetup.split_list(glac_no, n=num_cores, option_ordered=args.option_ordered)
-
-    # Read GCM names from argument parser
-    gcm_name = args.gcm_list_fn
-    if args.gcm_name is not None:
-        gcm_list = [args.gcm_name]
-        scenario = args.scenario
-    elif args.gcm_list_fn == pygem_prms.ref_gcm_name:
-        gcm_list = [pygem_prms.ref_gcm_name]
-        scenario = args.scenario
-    else:
-        with open(args.gcm_list_fn, 'r') as gcm_fn:
-            gcm_list = gcm_fn.read().splitlines()
-            scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
-            print('Found %d gcms to process'%(len(gcm_list)))
-  
-    # Read realizations from argument parser
-    if args.realization is not None:
-        realizations = [args.realization]
-    elif args.realization_list is not None:
-        with open(args.realization_list, 'r') as real_fn:
-            realizations = list(real_fn.read().splitlines())
-            print('Found %d realizations to process'%(len(realizations)))
-    else:
-        realizations = None
-    
-    # Producing realization or realization list. Best to convert them into the same format!
-    # Then pass this as a list or None.
-    # If passing this through the list_packed_vars, then don't go back and get from arg parser again!
- 
-    # Loop through all GCMs
-    for gcm_name in gcm_list:
-        if args.scenario is None:
-            print('Processing:', gcm_name)
-        elif not args.scenario is None:
-            print('Processing:', gcm_name, scenario)
-        # Pack variables for multiprocessing
-        list_packed_vars = []          
-        if realizations is not None:
-            for realization in realizations:
-                for count, glac_no_lst in enumerate(glac_no_lsts):
-                    list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
-        else:
-            for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append([count, glac_no_lst, gcm_name, realizations])
-                
-        print('len list packed vars:', len(list_packed_vars))
-           
         # Parallel processing
-        if args.option_parallels != 0:
+        if args.option_parallels:
             print('Processing in parallel with ' + str(args.num_simultaneous_processes) + ' cores...')
             with multiprocessing.Pool(args.num_simultaneous_processes) as p:
-                p.map(main,list_packed_vars)
+                p.map(main,simlist)
         # If not in parallel, then only should be one loop
         else:
             # Loop through the chunks and export bias adjustments
-            for n in range(len(list_packed_vars)):
-                main(list_packed_vars[n])
+            for n in range(len(simlist)):
+                main(simlist[n])
+
+    else:
+        # RGI glacier number
+        if args.rgi_glac_number_fn is not None:
+            with open(args.rgi_glac_number_fn, 'rb') as f:
+                glac_no = pickle.load(f)
+        elif pygem_prms.glac_no is not None:
+            glac_no = pygem_prms.glac_no
+        else:
+            main_glac_rgi_all = modelsetup.selectglaciersrgitable(
+                    rgi_regionsO1=pygem_prms.rgi_regionsO1, rgi_regionsO2=pygem_prms.rgi_regionsO2,
+                    rgi_glac_number=pygem_prms.rgi_glac_number, glac_no=pygem_prms.glac_no,
+                    include_landterm=pygem_prms.include_landterm, include_laketerm=pygem_prms.include_laketerm, 
+                    include_tidewater=pygem_prms.include_tidewater, 
+                    min_glac_area_km2=pygem_prms.min_glac_area_km2)
+            glac_no = list(main_glac_rgi_all['rgino_str'].values)
+
+        # Number of cores for parallel processing
+        if args.option_parallels != 0:
+            num_cores = int(np.min([len(glac_no), args.num_simultaneous_processes]))
+        else:
+            num_cores = 1
+
+        # Glacier number lists to pass for parallel processing
+        glac_no_lsts = modelsetup.split_list(glac_no, n=num_cores, option_ordered=args.option_ordered)
+
+        # Read GCM names from argument parser
+        gcm_name = args.gcm_list_fn
+        if args.gcm_name is not None:
+            gcm_list = [args.gcm_name]
+            scenario = args.scenario
+        elif args.gcm_list_fn == pygem_prms.ref_gcm_name:
+            gcm_list = [pygem_prms.ref_gcm_name]
+            scenario = args.scenario
+        else:
+            with open(args.gcm_list_fn, 'r') as gcm_fn:
+                gcm_list = gcm_fn.read().splitlines()
+                scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
+                print('Found %d gcms to process'%(len(gcm_list)))
+    
+        # Read realizations from argument parser
+        if args.realization is not None:
+            realizations = [args.realization]
+        elif args.realization_list is not None:
+            with open(args.realization_list, 'r') as real_fn:
+                realizations = list(real_fn.read().splitlines())
+                print('Found %d realizations to process'%(len(realizations)))
+        else:
+            realizations = None
+        
+        # Producing realization or realization list. Best to convert them into the same format!
+        # Then pass this as a list or None.
+        # If passing this through the list_packed_vars, then don't go back and get from arg parser again!
+    
+        # Loop through all GCMs
+        for gcm_name in gcm_list:
+            if args.scenario is None:
+                print('Processing:', gcm_name)
+            elif not args.scenario is None:
+                print('Processing:', gcm_name, scenario)
+            # Pack variables for multiprocessing
+            list_packed_vars = []          
+            if realizations is not None:
+                for realization in realizations:
+                    for count, glac_no_lst in enumerate(glac_no_lsts):
+                        list_packed_vars.append([count, glac_no_lst, gcm_name, realization])
+            else:
+                for count, glac_no_lst in enumerate(glac_no_lsts):
+                    list_packed_vars.append([count, glac_no_lst, gcm_name, realizations])
+                    
+            print('len list packed vars:', len(list_packed_vars))
+            
+            # Parallel processing
+            if args.option_parallels != 0:
+                print('Processing in parallel with ' + str(args.num_simultaneous_processes) + ' cores...')
+                with multiprocessing.Pool(args.num_simultaneous_processes) as p:
+                    p.map(main,list_packed_vars)
+            # If not in parallel, then only should be one loop
+            else:
+                # Loop through the chunks and export bias adjustments
+                for n in range(len(list_packed_vars)):
+                    main(list_packed_vars[n])
 
     print('Total processing time:', time.time()-time_start, 's')

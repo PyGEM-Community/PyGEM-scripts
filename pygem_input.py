@@ -15,7 +15,7 @@ from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromra
 
 #%% ===== MODEL SETUP DIRECTORY =====
 main_directory = os.getcwd()
-main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
+# main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
 model_run_date = datetime.today().strftime('%Y-%m-%d')
@@ -81,7 +81,7 @@ if hindcast:
 
 
 #%% ===== CALIBRATION OPTIONS =====
-# Calibration option ('emulator', 'MCMC', 'MCMC_fullsim' 'HH2015', 'HH2015mod')
+# Calibration option ('emulator', 'MCMC', 'MCMC_fullsim' 'HH2015', 'HH2015mod', None)
 option_calibration = 'MCMC'
 
 # Prior distribution (specify filename or set equal to None)
@@ -234,7 +234,7 @@ output_sim_fp = output_filepath + 'simulations/'
 # Output statistics of simulation (options include any of the following 'mean', 'std', '2.5%', '25%', 'median', '75%', '97.5%')
 sim_stat_cns = ['median', 'mad']
 
-# Output options
+#%% ===== OUTPUT OPTIONS =====
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
 export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
@@ -258,9 +258,9 @@ terminus_percentage = 20            # glacier (%) considered terminus (20% in HH
 
 
 #%% ===== MODEL PARAMETERS =====
-use_calibrated_modelparams = True   # False: use input values, True: use calibrated model parameters
 use_constant_lapserate = False      # False: use spatially and temporally varying lapse rate, True: use constant value specified below
-if not use_calibrated_modelparams:
+# if not use_calibrated_modelparams:
+if option_calibration is None:
     print('\nWARNING: using non-calibrated model parameters\n')
     sim_iters = 1
     
