@@ -126,6 +126,12 @@ def getparser():
                         help='number of simultaneous processes (cores) to use')
     parser.add_argument('-batch_number', action='store', type=int, default=None,
                         help='Batch number used to differentiate output on supercomputer')
+    parser.add_argument('-kp', action='store', type=float, default=pygem_prms.kp,
+                        help='Precipitation bias')
+    parser.add_argument('-tbias', action='store', type=float, default=pygem_prms.tbias,
+                        help='Temperature bias')
+    parser.add_argument('-ddfsnow', action='store', type=float, default=pygem_prms.ddfsnow,
+                        help='Degree-day factor of snow')
     # flags
     parser.add_argument('-option_ordered', action='store_true',
                         help='Flag to keep glacier lists ordered (default is off)')
@@ -1226,7 +1232,7 @@ def main(list_packed_vars):
             if (fls is not None) and (glacier_area_km2.sum() > 0):
                 
                 # Load model parameters
-                if pygem_prms.use_calibrated_modelparams:
+                if pygem_prms.option_calibration:
                     
                     modelprms_fn = glacier_str + '-modelprms_dict.pkl'
                     modelprms_fp = (pygem_prms.output_filepath + 'calibration/' + glacier_str.split('.')[0].zfill(2) 
@@ -1313,13 +1319,14 @@ def main(list_packed_vars):
                         
 
                 else:
-                    modelprms_all = {'kp': [pygem_prms.kp],
-                                      'tbias': [pygem_prms.tbias],
-                                      'ddfsnow': [pygem_prms.ddfsnow],
+                    modelprms_all = {'kp': [args.kp],
+                                      'tbias': [args.tbias],
+                                      'ddfsnow': [args.ddfsnow],
                                       'ddfice': [pygem_prms.ddfice],
                                       'tsnow_threshold': [pygem_prms.tsnow_threshold],
                                       'precgrad': [pygem_prms.precgrad]}
                     calving_k = np.zeros(sim_iters) + pygem_prms.calving_k
+                    calving_k_values = calving_k
                     
                 if debug and gdir.is_tidewater:
                     print('calving_k:', calving_k)
@@ -1386,7 +1393,7 @@ def main(list_packed_vars):
                     if debug:                    
                         print('n_iter:', n_iter)
                     
-                    if not calving_k is None:
+                    if calving_k is not None:
                         calving_k = calving_k_values[n_iter]
                         cfg.PARAMS['calving_k'] = calving_k
                         cfg.PARAMS['inversion_calving_k'] = calving_k
@@ -1919,9 +1926,15 @@ def main(list_packed_vars):
                         # Netcdf filename
                         if gcm_name in ['ERA-Interim', 'ERA5', 'COAWST']:
                             # Filename
-                            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
-                                          str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
+                            if pygem_prms.option_calibration:
+                                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
+                                            str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
+                                            str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
+                            else:
+                                netcdf_fn = (glacier_str + '_' + gcm_name + 
+                                            '_kp' + str(modelprms['kp']) + '_ddfsnow' + str(modelprms['ddfsnow']) + '_tbias' + str(modelprms['tbias']) + 
+                                            '_ba' + str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
+                                            str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_all.nc')
                         elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
@@ -1971,9 +1984,15 @@ def main(list_packed_vars):
                         # Netcdf filename
                         if gcm_name in ['ERA-Interim', 'ERA5', 'COAWST']:
                             # Filename
-                            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
-                                          str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                          str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
+                            if pygem_prms.option_calibration:
+                                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
+                                            str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
+                                            str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
+                            else:
+                                netcdf_fn = (glacier_str + '_' + gcm_name + 
+                                            '_kp' + str(modelprms['kp']) + '_ddfsnow' + str(modelprms['ddfsnow']) + '_tbias' + str(modelprms['tbias']) + 
+                                            '_ba' + str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
+                                            str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
                         elif realization is not None:
                             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                           str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
