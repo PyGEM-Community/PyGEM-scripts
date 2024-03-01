@@ -235,6 +235,7 @@ output_sim_fp = output_filepath + 'simulations/'
 sim_stat_cns = ['median', 'mad']
 
 #%% ===== OUTPUT OPTIONS =====
+export_all_simiters = False         # Exprort individual simulation results (False exports median and MAD from all sim_iters)
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
 export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
@@ -325,12 +326,12 @@ elif option_refreezing == 'HH2015':
 # ERA5 (default reference climate data)
 if ref_gcm_name == 'ERA5':
     era5_fp = main_directory + '/../climate_data/ERA5/'
-    era5_temp_fn = 'ERA5_temp_monthly.nc'
+    era5_temp_fn = 'ERA5_temp_monthly_1940_2023.nc'
     era5_tempstd_fn = 'ERA5_tempstd_monthly.nc'
-    era5_prec_fn = 'ERA5_totalprecip_monthly.nc'
+    era5_prec_fn = 'ERA5_totalprecip_monthly_1940_2023.nc'
     era5_elev_fn = 'ERA5_geopotential.nc'
     era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly_2020_2023.nc'
-    era5_lr_fn = 'ERA5_lapserates_monthly.nc'
+    era5_lr_fn = 'ERA5_lapserates_monthly_1940_2023.nc'
     assert os.path.exists(era5_fp), 'ERA5 filepath does not exist'
     assert os.path.exists(era5_fp + era5_temp_fn), 'ERA5 temperature filepath does not exist'
     assert os.path.exists(era5_fp + era5_prec_fn), 'ERA5 precipitation filepath does not exist'

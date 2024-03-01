@@ -150,7 +150,8 @@ def main(list_packed_vars):
     scenario = list_packed_vars[3]
     realization = list_packed_vars[4]
     gcm_bc_startyear = list_packed_vars[5]
-    gcm_endyear = list_packed_vars[6]
+    gcm_startyear = list_packed_vars[6]
+    gcm_endyear = list_packed_vars[7]
     
     # ===== LOAD GLACIERS =====
     main_glac_rgi = modelsetup.selectglaciersrgitable(glac_no=glac_no)
@@ -180,9 +181,8 @@ def main(list_packed_vars):
         # Netcdf filename
         if gcm_name in ['ERA-Interim', 'ERA5', 'COAWST']:
             # Filename
-            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
-                            str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                            str(gcm_bc_startyear) + '_' + str(gcm_endyear) + '_all.nc')
+            netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba0' +
+                        '_' +  str(sim_iters) + 'sets' + '_' + str(gcm_startyear) + '_' + str(gcm_endyear) + '_all.nc')
         elif realization is not None:
             netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                             str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
@@ -193,31 +193,36 @@ def main(list_packed_vars):
                             str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
                             '_' + str(sim_iters) + 'sets' + '_' + str(gcm_bc_startyear) + '_' + 
                             str(gcm_endyear) + '_all.nc')
+        
+        if os.path.exists(output_sim_stats_fp + netcdf_fn):
 
-        try:
-            # open dataset
-            statsds = xr.open_dataset(output_sim_stats_fp + netcdf_fn)
+            try:
+                # open dataset
+                statsds = xr.open_dataset(output_sim_stats_fp + netcdf_fn)
 
-            # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
-            glac_mass_monthly = get_monthly_mass(
-                                                statsds.glac_mass_annual.values, 
-                                                statsds.glac_massbaltotal_monthly.values * pygem_prms.density_ice, 
-                                                )
-            statsds.close()
+                # calculate monthly mass - pygem glac_massbaltotal_monthly is in units of m3, so convert to mass using density of ice
+                glac_mass_monthly = get_monthly_mass(
+                                                    statsds.glac_mass_annual.values, 
+                                                    statsds.glac_massbaltotal_monthly.values * pygem_prms.density_ice, 
+                                                    )
+                statsds.close()
 
-            # update dataset to add monthly mass change
-            output_ds_stats, encoding = update_xrdataset(statsds, glac_mass_monthly)
+                # update dataset to add monthly mass change
+                output_ds_stats, encoding = update_xrdataset(statsds, glac_mass_monthly)
 
-            # close input ds before write
-            statsds.close()
+                # close input ds before write
+                statsds.close()
 
-            # append to existing stats netcdf
-            output_ds_stats.to_netcdf(output_sim_stats_fp + netcdf_fn, mode='a', encoding=encoding, engine='netcdf4')
+                # append to existing stats netcdf
+                output_ds_stats.to_netcdf(output_sim_stats_fp + netcdf_fn, mode='a', encoding=encoding, engine='netcdf4')
 
-            # close datasets
-            output_ds_stats.close()
-        except:
-            pass
+                # close datasets
+                output_ds_stats.close()
+            
+            except:
+                pass
+        else:
+            print('Simulation not found: ',output_sim_stats_fp + netcdf_fn)
 
     return
 
@@ -251,8 +256,10 @@ if __name__ == '__main__':
                         help='text file full of realizations to run')
     parser.add_argument('-gcm_bc_startyear', action='store', type=int, default=pygem_prms.gcm_bc_startyear,
                         help='start year for bias correction')
-    parser.add_argument('-gcm_endyear', action='store', type=int, default=pygem_prms.gcm_endyear,
+    parser.add_argument('-gcm_startyear', action='store', type=int, default=pygem_prms.gcm_startyear,
                         help='start year for the model run')
+    parser.add_argument('-gcm_endyear', action='store', type=int, default=pygem_prms.gcm_endyear,
+                        help='end year for the model run')
     parser.add_argument('-num_simultaneous_processes', action='store', type=int, default=4,
                         help='number of simultaneous processes (cores) to use')
     parser.add_argument('-batch_number', action='store', type=int, default=None,
@@ -335,10 +342,10 @@ if __name__ == '__main__':
         if realizations is not None:
             for realization in realizations:
                 for count, glac_no_lst in enumerate(glac_no_lsts):
-                    list_packed_vars.append([count, glac_no_lst, gcm_name, scenario, realization, args.gcm_bc_startyear, args.gcm_endyear])
+                    list_packed_vars.append([count, glac_no_lst, gcm_name, scenario, realization, args.gcm_bc_startyear, args.gcm_startyear, args.gcm_endyear])
         else:
             for count, glac_no_lst in enumerate(glac_no_lsts):
-                list_packed_vars.append([count, glac_no_lst, gcm_name, scenario, realizations, args.gcm_bc_startyear, args.gcm_endyear])
+                list_packed_vars.append([count, glac_no_lst, gcm_name, scenario, realizations, args.gcm_bc_startyear, args.gcm_startyear, args.gcm_endyear])
                 
         print('len list packed vars:', len(list_packed_vars))
            

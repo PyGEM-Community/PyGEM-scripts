@@ -320,9 +320,8 @@ def main(list_packed_vars):
             # Netcdf filename
             if gcm_name in ['ERA-Interim', 'ERA5', 'COAWST']:
                 # Filename
-                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba' +
-                                str(pygem_prms.option_bias_adjustment) + '_' +  str(sim_iters) + 'sets' + '_' +
-                                str(args.gcm_bc_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
+                netcdf_fn = (glacier_str + '_' + gcm_name + '_' + str(pygem_prms.option_calibration) + '_ba0' +
+                            '_' +  str(sim_iters) + 'sets' + '_' + str(args.gcm_startyear) + '_' + str(args.gcm_endyear) + '_binned.nc')
             elif realization is not None:
                 netcdf_fn = (glacier_str + '_' + gcm_name + '_' + scenario + '_' + realization + '_' +
                                 str(pygem_prms.option_calibration) + '_ba' + str(pygem_prms.option_bias_adjustment) + 
