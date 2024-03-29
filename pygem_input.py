@@ -13,12 +13,15 @@ except:
 from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
-#%% ===== MODEL SETUP DIRECTORY =====
+#%% ===== MODEL SETUP  =====
+user_info = {'name':'Brandon Tober',
+            'institution':'Carnegie Mellon University, Pittsburgh PA',
+            'email':'btober@cmu.edu'}
+model_run_date = datetime.today().strftime('%Y-%m-%d')
 main_directory = os.getcwd()
 # main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = datetime.today().strftime('%Y-%m-%d')
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [13]                 # 1st order region number (RGI V6.0)
