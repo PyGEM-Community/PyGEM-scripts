@@ -19,7 +19,7 @@ user_info = {'name':'Brandon Tober',
             'email':'btober@cmu.edu'}
 model_run_date = datetime.today().strftime('%Y-%m-%d')
 main_directory = os.getcwd()
-main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
+# main_directory = '/trace/group/rounce/shared/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
 
@@ -230,17 +230,17 @@ if option_calibration == 'MCMC':
     sim_iters = 1                  # number of simulations
     sim_burn = 0                    # number of burn-in (if burn-in is done in MCMC sampling, then don't do here)
 else:
-    sim_iters = 5                   # number of simulations
-print(sim_iters)
+    sim_iters = 1                   # number of simulations
+
 # Output filepath of simulations
 output_sim_fp = output_filepath + 'simulations/'
-# Output statistics of simulation (options include any of the following 'mean', 'std', '2.5%', '25%', 'median', '75%', '97.5%')
-sim_stat_cns = ['median', 'mad']
+# Output statistics of simulations (options include any of the following 'mean', 'std', '2.5%', '25%', 'median', '75%', '97.5%')
+sim_stats = ['median', 'mad']
 
 #%% ===== OUTPUT OPTIONS =====
 export_all_simiters = True         # Exprort individual simulation results (False exports median and MAD from all sim_iters)
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
-export_binned_thickness = False      # Export binned ice thickness
+export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
 
@@ -390,7 +390,7 @@ hyps_data = 'OGGM'      # Hypsometry dataset (OGGM; Maussion etal 2019)
 
 # Hypsometry data pre-processed by OGGM
 if hyps_data == 'OGGM':
-    oggm_gdir_fp = main_directory + '/../oggm_gdirs/'
+    oggm_gdir_fp = main_directory + '/../OGGM/gdirs/'
     overwrite_gdirs = False
     has_internet = True
 
