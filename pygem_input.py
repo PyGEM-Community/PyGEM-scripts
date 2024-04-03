@@ -17,7 +17,6 @@ from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromra
 user_info = {'name':'Brandon Tober',
             'institution':'Carnegie Mellon University, Pittsburgh PA',
             'email':'btober@cmu.edu'}
-model_run_date = datetime.today().strftime('%Y-%m-%d')
 main_directory = os.getcwd()
 # main_directory = '/trace/group/rounce/shared/Output/'      # file path hack if data is in different location from code
 # Output directory
