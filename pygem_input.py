@@ -13,12 +13,15 @@ except:
 from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
-#%% ===== MODEL SETUP DIRECTORY =====
+#%% ===== MODEL SETUP  =====
+user_info = {'name':'Brandon Tober',
+            'institution':'Carnegie Mellon University, Pittsburgh PA',
+            'email':'btober@cmu.edu'}
+model_run_date = datetime.today().strftime('%Y-%m-%d')
 main_directory = os.getcwd()
-# main_directory = '/Users/btober/Documents/pygem_data/Output/'      # file path hack if data is in different location from code
+# main_directory = '/trace/group/rounce/shared/Output/'      # file path hack if data is in different location from code
 # Output directory
 output_filepath = main_directory + '/../Output/'
-model_run_date = datetime.today().strftime('%Y-%m-%d')
 
 #%% ===== GLACIER SELECTION =====
 rgi_regionsO1 = [13]                 # 1st order region number (RGI V6.0)
@@ -65,7 +68,7 @@ if ref_spinupyears > 0:
 
 # GCM period used for simulation run 
 gcm_startyear = 2000                # first year of model run (simulation dataset)
-gcm_endyear = 2100                  # last year of model run (simulation dataset)
+gcm_endyear = 2019                  # last year of model run (simulation dataset)
 gcm_wateryear = 'calendar'          # options for years: 'calendar', 'hydro', 'custom'
 gcm_bc_startyear = 1981             # first year used for GCM bias correction
 gcm_spinupyears = 0                 # spin up years for simulation (output not set up for spinup years at present)
@@ -82,7 +85,7 @@ if hindcast:
 
 #%% ===== CALIBRATION OPTIONS =====
 # Calibration option ('emulator', 'MCMC', 'MCMC_fullsim' 'HH2015', 'HH2015mod', None)
-option_calibration = 'MCMC'
+option_calibration = 'HH2015'
 
 # Prior distribution (specify filename or set equal to None)
 priors_reg_fullfn = main_directory + '/../Output/calibration/priors_region.csv'
@@ -231,10 +234,11 @@ else:
 
 # Output filepath of simulations
 output_sim_fp = output_filepath + 'simulations/'
-# Output statistics of simulation (options include any of the following 'mean', 'std', '2.5%', '25%', 'median', '75%', '97.5%')
-sim_stat_cns = ['median', 'mad']
+# Output statistics of simulations (options include any of the following 'mean', 'std', '2.5%', '25%', 'median', '75%', '97.5%')
+sim_stats = ['median', 'mad']
 
 #%% ===== OUTPUT OPTIONS =====
+export_all_simiters = True         # Exprort individual simulation results (False exports median and MAD from all sim_iters)
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
 export_binned_thickness = True      # Export binned ice thickness
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
@@ -325,12 +329,12 @@ elif option_refreezing == 'HH2015':
 # ERA5 (default reference climate data)
 if ref_gcm_name == 'ERA5':
     era5_fp = main_directory + '/../climate_data/ERA5/'
-    era5_temp_fn = 'ERA5_temp_monthly.nc'
+    era5_temp_fn = 'ERA5_temp_monthly_1940_2023.nc'
     era5_tempstd_fn = 'ERA5_tempstd_monthly.nc'
-    era5_prec_fn = 'ERA5_totalprecip_monthly.nc'
+    era5_prec_fn = 'ERA5_totalprecip_monthly_1940_2023.nc'
     era5_elev_fn = 'ERA5_geopotential.nc'
     era5_pressureleveltemp_fn = 'ERA5_pressureleveltemp_monthly_2020_2023.nc'
-    era5_lr_fn = 'ERA5_lapserates_monthly.nc'
+    era5_lr_fn = 'ERA5_lapserates_monthly_1940_2023.nc'
     assert os.path.exists(era5_fp), 'ERA5 filepath does not exist'
     assert os.path.exists(era5_fp + era5_temp_fn), 'ERA5 temperature filepath does not exist'
     assert os.path.exists(era5_fp + era5_prec_fn), 'ERA5 precipitation filepath does not exist'
@@ -386,7 +390,7 @@ hyps_data = 'OGGM'      # Hypsometry dataset (OGGM; Maussion etal 2019)
 
 # Hypsometry data pre-processed by OGGM
 if hyps_data == 'OGGM':
-    oggm_gdir_fp = main_directory + '/../oggm_gdirs/'
+    oggm_gdir_fp = main_directory + '/../OGGM/gdirs/'
     overwrite_gdirs = False
     has_internet = True
 

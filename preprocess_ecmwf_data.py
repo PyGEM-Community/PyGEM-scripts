@@ -4,7 +4,7 @@ pygemfxns_preprocessing.py is a list of the model functions that are used to pre
 """
 
 # Built-in libraries
-import os
+import os, sys
 import argparse
 # External libraries
 import pandas as pd
@@ -34,12 +34,12 @@ def getparser():
     """
     parser = argparse.ArgumentParser(description="select pre-processing options")
     # add arguments
-    parser.add_argument('-createlapserates', action='store', type=int, default=0,
-                        help='option to create lapse rates or not (1=yes, 0=no)')
-    parser.add_argument('-createtempstd', action='store', type=int, default=0,
-                        help='option to create temperature std of daily data or not (1=yes, 0=no)')
-    parser.add_argument('-mergetimes', action='store', type=int, default=0,
-                        help='option to merge files or not [hard-coded] (1=yes, 0=no)')
+    parser.add_argument('-createlapserates', action='store_true',
+                        help='flag, create lapse rates')
+    parser.add_argument('-createtempstd', action='store_true',
+                        help='flag, create temperature std of daily data')
+    parser.add_argument('-mergetimes', action='store_true',
+                        help='flag, merge files [hard-coded]')
     return parser
 
 if __name__ == '__main__':
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     #%% Option to merge files together
-    if args.mergetimes == 1:
+    if args.mergetimes:
         # Merge completed files together
         ds_fp = pygem_prms.main_directory + '/../climate_data/ERA5/'
         
@@ -97,7 +97,8 @@ if __name__ == '__main__':
         
     
     #%% Create netcdf file of lapse rates from temperature pressure level data
-    if args.createlapserates == 1:
+    if args.createlapserates:
+
         # Input data
         gcm_fp = pygem_prms.era5_fp
         gcm_fn = pygem_prms.era5_pressureleveltemp_fn
@@ -106,7 +107,7 @@ if __name__ == '__main__':
         tempname = 't'
         levelname = 'level'
         elev_idx_max = 0
-        elev_idx_min = 20
+        # elev_idx_min = 20
         expver_idx = 0
         
         
@@ -116,6 +117,10 @@ if __name__ == '__main__':
         if ds[levelname].attrs['units'] == 'millibars':
             # convert pressure levels from millibars to Pa
             levels = ds[levelname].values * 100
+    
+        # get highest presesure level (min elev)
+        elev_idx_min = len(levels)
+
         # Compute the elevation [m a.s.l] of the pressure levels using the barometric pressure formula (pressure in Pa)
         elev = (-pygem_prms.R_gas * pygem_prms.temp_std / (pygem_prms.gravity * pygem_prms.molarmass_air) * 
                 np.log(levels/pygem_prms.pressure_std))
@@ -132,7 +137,7 @@ if __name__ == '__main__':
             ds_subset_reshape = ds_subset.reshape(ds_subset.shape[0],-1)
             lr[ntime,:,:] = (np.polyfit(elev[elev_idx_max:elev_idx_min+1], ds_subset_reshape, deg=1)[0]
                              .reshape(ds_subset.shape[1:]))
-    
+
         # Export lapse rates with attibutes
         output_ds = ds.copy()
         output_ds = output_ds.drop('t')
@@ -158,7 +163,7 @@ if __name__ == '__main__':
        
          
     #%%
-    if args.createtempstd == 1:
+    if args.createtempstd:
         ds_fp = pygem_prms.main_directory + '/../climate_data/ERA5/'
     #    ds_fn = 't2m_hourly_1979_1989.nc'
     #    ds_fn = 't2m_hourly_1990_1999.nc'
