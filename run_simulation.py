@@ -169,12 +169,11 @@ def main(list_packed_vars):
     realization = list_packed_vars[3]
     if (gcm_name != pygem_prms.ref_gcm_name) and (args.scenario is None):
         scenario = os.path.basename(args.gcm_list_fn).split('_')[1]
-    elif not args.scenario is None:
+    else:
         scenario = args.scenario
     debug = args.debug
     if debug:
-        if 'scenario' in locals():
-            print(scenario)
+        print(f'scenario:{scenario}')
     if args.debug_spc:
         debug_spc = True
     else:
@@ -374,8 +373,8 @@ def main(list_packed_vars):
         reg_str = str(glacier_rgi_table.O1Region).zfill(2)
         rgiid = main_glac_rgi.loc[main_glac_rgi.index.values[glac],'RGIId']
 
-        # try:
-        for batman in [0]:
+        try:
+        # for batman in [0]:
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
@@ -1034,21 +1033,15 @@ def main(list_packed_vars):
                             # Instantiate dataset
                             output_stats = output.glacierwide_stats(glacier_rgi_table=glacier_rgi_table, 
                                                     dates_table=dates_table,
-                                                    wateryear=pygem_prms.gcm_wateryear,
                                                     sim_iters=1,
-                                                    extra_vars = pygem_prms.export_extra_vars,
                                                     pygem_version=pygem.__version__,
-                                                    user_info = pygem_prms.user_info,
-                                                    outdir = pygem_prms.output_sim_fp,
                                                     gcm_name = gcm_name,
                                                     scenario = scenario,
                                                     realization=realization,
-                                                    calib_opt = pygem_prms.option_calibration,
                                                     modelprms = modelprms,
-                                                    ba_opt = pygem_prms.option_bias_adjustment,
-                                                    gcm_bc_startyr = args.gcm_bc_startyear,
-                                                    gcm_startyr = args.gcm_startyear,
-                                                    gcm_endyr = args.gcm_endyear)
+                                                    gcm_bc_startyear = args.gcm_bc_startyear,
+                                                    gcm_startyear = args.gcm_startyear,
+                                                    gcm_endyear = args.gcm_endyear)
 
                             for n_iter in range(sim_iters):
                                 # create and return xarray dataset
@@ -1082,25 +1075,18 @@ def main(list_packed_vars):
                                 # export glacierwide stats for iteration
                                 output_stats.save_xr_ds(output_stats.get_fn().replace('SETS',f'set{n_iter}') + 'all.nc')
 
-
                         # instantiate dataset for merged simulations
                         output_stats = output.glacierwide_stats(glacier_rgi_table=glacier_rgi_table, 
                                                 dates_table=dates_table,
-                                                wateryear=pygem_prms.gcm_wateryear,
                                                 sim_iters=sim_iters,
-                                                extra_vars = pygem_prms.export_extra_vars,
                                                 pygem_version=pygem.__version__,
-                                                user_info = pygem_prms.user_info,
-                                                outdir = pygem_prms.output_sim_fp,
                                                 gcm_name = gcm_name,
                                                 scenario = scenario,
                                                 realization=realization,
-                                                calib_opt = pygem_prms.option_calibration,
                                                 modelprms = modelprms,
-                                                ba_opt = pygem_prms.option_bias_adjustment,
-                                                gcm_bc_startyr = args.gcm_bc_startyear,
-                                                gcm_startyr = args.gcm_startyear,
-                                                gcm_endyr = args.gcm_endyear)
+                                                gcm_bc_startyear = args.gcm_bc_startyear,
+                                                gcm_startyear = args.gcm_startyear,
+                                                gcm_endyear = args.gcm_endyear)
                         # create and return xarray dataset
                         output_stats.create_xr_ds()
                         output_ds_all_stats = output_stats.get_xr_ds()
@@ -1198,21 +1184,16 @@ def main(list_packed_vars):
                             # Instantiate dataset
                             output_binned = output.binned_stats(glacier_rgi_table=glacier_rgi_table, 
                                                     dates_table=dates_table,
-                                                    wateryear=pygem_prms.gcm_wateryear,
                                                     sim_iters=1,
                                                     nbins = surface_h_initial.shape[0],
                                                     pygem_version=pygem.__version__,
-                                                    user_info = pygem_prms.user_info,
-                                                    outdir = pygem_prms.output_sim_fp,
                                                     gcm_name = gcm_name,
                                                     scenario = scenario,
                                                     realization=realization,
-                                                    calib_opt = pygem_prms.option_calibration,
                                                     modelprms = modelprms,
-                                                    ba_opt = pygem_prms.option_bias_adjustment,
-                                                    gcm_bc_startyr = args.gcm_bc_startyear,
-                                                    gcm_startyr = args.gcm_startyear,
-                                                    gcm_endyr = args.gcm_endyear)
+                                                    gcm_bc_startyear = args.gcm_bc_startyear,
+                                                    gcm_startyear = args.gcm_startyear,
+                                                    gcm_endyear = args.gcm_endyear)
 
                             for n_iter in range(sim_iters):
                                 # create and return xarray dataset
@@ -1232,21 +1213,16 @@ def main(list_packed_vars):
                         # instantiate dataset for merged simulations
                         output_binned = output.binned_stats(glacier_rgi_table=glacier_rgi_table, 
                                                 dates_table=dates_table,
-                                                wateryear=pygem_prms.gcm_wateryear,
                                                 sim_iters=sim_iters,
                                                 nbins = surface_h_initial.shape[0],
                                                 pygem_version=pygem.__version__,
-                                                user_info = pygem_prms.user_info,
-                                                outdir = pygem_prms.output_sim_fp,
                                                 gcm_name = gcm_name,
                                                 scenario = scenario,
                                                 realization=realization,
-                                                calib_opt = pygem_prms.option_calibration,
                                                 modelprms = modelprms,
-                                                ba_opt = pygem_prms.option_bias_adjustment,
-                                                gcm_bc_startyr = args.gcm_bc_startyear,
-                                                gcm_startyr = args.gcm_startyear,
-                                                gcm_endyr = args.gcm_endyear)
+                                                gcm_bc_startyear = args.gcm_bc_startyear,
+                                                gcm_startyear = args.gcm_startyear,
+                                                gcm_endyear = args.gcm_endyear)
                         # create and return xarray dataset
                         output_binned.create_xr_ds()
                         output_ds_binned_stats = output_binned.get_xr_ds()
@@ -1305,16 +1281,16 @@ def main(list_packed_vars):
                     
         # print('\n\nADD BACK IN EXCEPTION\n\n')
         
-        # except Exception as err:
-        #     # LOG FAILURE
-        #     fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'
-        #     if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
-        #         fail_fp += scenario + '/'
-        #     if not os.path.exists(fail_fp):
-        #         os.makedirs(fail_fp, exist_ok=True)
-        #     txt_fn_fail = glacier_str + "-sim_failed.txt"
-        #     with open(fail_fp + txt_fn_fail, "w") as text_file:
-        #         text_file.write(glacier_str + f' failed to complete simulation: {err}')
+        except Exception as err:
+            # LOG FAILURE
+            fail_fp = pygem_prms.output_sim_fp + 'failed/' + reg_str + '/' + gcm_name + '/'
+            if gcm_name not in ['ERA-Interim', 'ERA5', 'COAWST']:
+                fail_fp += scenario + '/'
+            if not os.path.exists(fail_fp):
+                os.makedirs(fail_fp, exist_ok=True)
+            txt_fn_fail = glacier_str + "-sim_failed.txt"
+            with open(fail_fp + txt_fn_fail, "w") as text_file:
+                text_file.write(glacier_str + f' failed to complete simulation: {err}')
 
     # Global variables for Spyder development
     if not args.option_parallels:
