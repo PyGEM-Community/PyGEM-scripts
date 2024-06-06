@@ -1227,6 +1227,9 @@ def main(list_packed_vars):
                         output_binned.create_xr_ds()
                         output_ds_binned_stats = output_binned.get_xr_ds()
 
+                        # populate dataset with stats from each variable of interest
+                        output_ds_binned_stats['bin_distance'].values = output_glac_bin_dist[np.newaxis, :]
+                        output_ds_binned_stats['bin_surface_h_initial'].values = surface_h_initial[np.newaxis, :]
                         output_ds_binned_stats['bin_mass_annual'].values = (
                                 np.median(output_glac_bin_mass_annual, axis=2)[np.newaxis,:,:])
                         output_ds_binned_stats['bin_thick_annual'].values = (
