@@ -506,7 +506,7 @@ def main(list_packed_vars):
                     modelprms_all = {'kp': [args.kp],
                                       'tbias': [args.tbias],
                                       'ddfsnow': [args.ddfsnow],
-                                      'ddfice': [pygem_prms.ddfice],
+                                      'ddfice': [args.ddfsnow / pygem_prms.ddfsnow_iceratio],
                                       'tsnow_threshold': [pygem_prms.tsnow_threshold],
                                       'precgrad': [pygem_prms.precgrad]}
                     calving_k = np.zeros(sim_iters) + pygem_prms.calving_k
