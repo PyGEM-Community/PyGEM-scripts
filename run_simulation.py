@@ -134,6 +134,8 @@ def getparser():
                         help='Temperature bias')
     parser.add_argument('-ddfsnow', action='store', type=float, default=pygem_prms.ddfsnow,
                         help='Degree-day factor of snow')
+    parser.add_argument('-gs_job_num', action='store', type=int, default=None,
+                        help='Job number for grid search - sources duplicated oggm glacier directories to avoid corruption')
     # flags
     parser.add_argument('-option_ordered', action='store_true',
                         help='Flag to keep glacier lists ordered (default is off)')
@@ -375,6 +377,11 @@ def main(list_packed_vars):
 
         try:
         # for batman in [0]:
+
+            # if doing grid search - source duplicated oggm gdirs to avoid corruption
+            if not pygem_prms.option_calibration and args.gs_job_num:
+                cfg.PATHS['working_dir'] = pygem_prms.oggm_gdir_fp.replace('gdirs',f'gdirs_{args.gs_job_num}')
+
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
