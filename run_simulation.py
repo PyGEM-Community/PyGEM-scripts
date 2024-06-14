@@ -134,6 +134,8 @@ def getparser():
                         help='Temperature bias')
     parser.add_argument('-ddfsnow', action='store', type=float, default=pygem_prms.ddfsnow,
                         help='Degree-day factor of snow')
+    parser.add_argument('-oggm_working_dir', action='store', type=int, default=pygem_prms.oggm_gdir_fp,
+                        help='Specify OGGM working dir - useful if performing a grid search and have duplicated glacier directories')
     # flags
     parser.add_argument('-option_ordered', action='store_true',
                         help='Flag to keep glacier lists ordered (default is off)')
@@ -378,11 +380,11 @@ def main(list_packed_vars):
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
-                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level)
+                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level, working_dir=args.oggm_working_dir)
                 gdir.is_tidewater = False
                 calving_k = None
             else:
-                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level)
+                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level, working_dir=args.oggm_working_dir)
                 gdir.is_tidewater = True
                 cfg.PARAMS['use_kcalving_for_inversion'] = True
                 cfg.PARAMS['use_kcalving_for_run'] = True
