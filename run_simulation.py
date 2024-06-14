@@ -380,16 +380,17 @@ def main(list_packed_vars):
 
             # if doing grid search - source duplicated oggm gdirs to avoid corruption
             if not pygem_prms.option_calibration and args.gs_job_num:
-                cfg.PATHS['working_dir'] = pygem_prms.oggm_gdir_fp.replace('gdirs',f'gdirs_{args.gs_job_num}')
-
+                working_dir = pygem_prms.oggm_gdir_fp.replace('gdirs',f'gdirs_{args.gs_job_num}')
+            else:
+                working_dir = pygem_prms.oggm_gdir_fp
 
             # ===== Load glacier data: area (km2), ice thickness (m), width (km) =====
             if not glacier_rgi_table['TermType'] in [1,5] or not pygem_prms.include_calving:
-                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level)
+                gdir = single_flowline_glacier_directory(glacier_str, logging_level=pygem_prms.logging_level, working_dir=working_dir)
                 gdir.is_tidewater = False
                 calving_k = None
             else:
-                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level)
+                gdir = single_flowline_glacier_directory_with_calving(glacier_str, logging_level=pygem_prms.logging_level, working_dir=working_dir)
                 gdir.is_tidewater = True
                 cfg.PARAMS['use_kcalving_for_inversion'] = True
                 cfg.PARAMS['use_kcalving_for_run'] = True

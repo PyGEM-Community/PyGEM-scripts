@@ -17,6 +17,7 @@ def main():
 
     if (glac_num is not None) and (num_copies)>1:
         reg,id = glac_num.split('.')
+        reg = reg.zfill(2)
         thous = id[:2]
         
         root = pygem_prms.oggm_gdir_fp
