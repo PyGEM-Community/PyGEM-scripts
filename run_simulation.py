@@ -134,7 +134,7 @@ def getparser():
                         help='Temperature bias')
     parser.add_argument('-ddfsnow', action='store', type=float, default=pygem_prms.ddfsnow,
                         help='Degree-day factor of snow')
-    parser.add_argument('-oggm_working_dir', action='store', type=int, default=pygem_prms.oggm_gdir_fp,
+    parser.add_argument('-oggm_working_dir', action='store', type=str, default=pygem_prms.oggm_gdir_fp,
                         help='Specify OGGM working dir - useful if performing a grid search and have duplicated glacier directories')
     # flags
     parser.add_argument('-option_ordered', action='store_true',
