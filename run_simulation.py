@@ -1046,6 +1046,8 @@ def main(list_packed_vars):
                                                     gcm_endyear = args.gcm_endyear)
 
                             for n_iter in range(sim_iters):
+                                # pass model params for iteration and update output dataset model params
+                                output_stats.set_modelprms({key: modelprms_all[key][n_iter] for key in modelprms_all})
                                 # create and return xarray dataset
                                 output_stats.create_xr_ds()
                                 output_ds_all_stats = output_stats.get_xr_ds()
@@ -1198,6 +1200,8 @@ def main(list_packed_vars):
                                                     gcm_endyear = args.gcm_endyear)
 
                             for n_iter in range(sim_iters):
+                                # pass model params for iteration and update output dataset model params
+                                output_binned.set_modelprms({key: modelprms_all[key][n_iter] for key in modelprms_all})
                                 # create and return xarray dataset
                                 output_binned.create_xr_ds()
                                 output_ds_binned_stats = output_binned.get_xr_ds()
