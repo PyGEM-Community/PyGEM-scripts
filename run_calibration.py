@@ -32,12 +32,12 @@ from oggm import workflow
 #from oggm.core.flowline import FluxBasedModel
 #from oggm.core.inversion import calving_flux_from_depth
 
+import torch
+import gpytorch
+import sklearn.model_selection
+
 # Model-specific libraries
-if pygem_prms.option_calibration in ['emulator', 'MCMC']:
-    import torch
-    import gpytorch
-    import sklearn.model_selection
-if pygem_prms.option_calibration in ['MCMC']:
+if 'MCMC' in pygem_prms.option_calibration:
     import pymc
     from pymc import deterministic
 
