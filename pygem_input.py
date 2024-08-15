@@ -5,11 +5,7 @@ import os, sys
 from datetime import datetime
 # External libraries
 import numpy as np
-# Local libaries
-try:
-    import pygem
-except:
-    sys.path.append(os.getcwd() + '/../PyGEM/')
+import pygem
 from pygem.utils._funcs_selectglaciers import get_same_glaciers, glac_num_fromrange, glac_fromcsv, glac_wo_cal
 
 
@@ -240,6 +236,7 @@ sim_stats = ['median', 'mad']
 export_all_simiters = True         # Exprort individual simulation results (False exports median and MAD from all sim_iters)
 export_essential_data = True        # Export essential data (ex. mass balance components, ElA, etc.)
 export_binned_thickness = True      # Export binned ice thickness
+export_binned_components = True     # Export binned mass balance components (accumulation, melt, refreeze)
 export_binned_area_threshold = 0    # Area threshold for exporting binned ice thickness
 export_extra_vars = True            # Option to export extra variables (temp, prec, melt, acc, etc.)
 
