@@ -14,12 +14,7 @@ import pandas as pd
 import pickle
 import numpy as np
 import xarray as xr
-
-try:
-    import pygem
-except:
-    sys.path.append(os.getcwd() + '/../PyGEM/')
-    import pygem
+import pygem
 
 # Local libraries
 import pygem_input as pygem_prms

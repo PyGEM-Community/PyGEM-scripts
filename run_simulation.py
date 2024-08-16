@@ -958,6 +958,7 @@ def main(list_packed_vars):
                         output_offglac_runoff_monthly[:, n_iter] = mbmod.offglac_wide_runoff
 
                         if output_glac_bin_icethickness_annual is None:
+                            output_glac_bin_area_annual_sim = mbmod.glac_bin_area_annual[:,:,np.newaxis]
                             output_glac_bin_mass_annual_sim = (mbmod.glac_bin_area_annual * 
                                                                mbmod.glac_bin_icethickness_annual * 
                                                                pygem_prms.density_ice)[:,:,np.newaxis]                            
@@ -979,6 +980,7 @@ def main(list_packed_vars):
                                 # mass
                                 glacier_vol_t0 = fl_widths_m * fl_dx_meter * icethickness_t0
                                 output_glac_bin_mass_annual_sim[:,-1,0] = glacier_vol_t0  * pygem_prms.density_ice
+                            output_glac_bin_area_annual = output_glac_bin_area_annual_sim
                             output_glac_bin_mass_annual = output_glac_bin_mass_annual_sim
                             output_glac_bin_icethickness_annual = output_glac_bin_icethickness_annual_sim
                             output_glac_bin_massbalclim_annual_sim = np.zeros(mbmod.glac_bin_icethickness_annual.shape)
@@ -987,8 +989,22 @@ def main(list_packed_vars):
                             output_glac_bin_massbalclim_monthly_sim = np.zeros(mbmod.glac_bin_massbalclim.shape)
                             output_glac_bin_massbalclim_monthly_sim =  mbmod.glac_bin_massbalclim
                             output_glac_bin_massbalclim_monthly = output_glac_bin_massbalclim_monthly_sim[:,:,np.newaxis]
+                            # accum
+                            output_glac_bin_acc_monthly_sim = np.zeros(mbmod.bin_acc.shape)
+                            output_glac_bin_acc_monthly_sim =  mbmod.bin_acc
+                            output_glac_bin_acc_monthly = output_glac_bin_acc_monthly_sim[:,:,np.newaxis]
+                            # refreeze
+                            output_glac_bin_refreeze_monthly_sim = np.zeros(mbmod.glac_bin_refreeze.shape)
+                            output_glac_bin_refreeze_monthly_sim =  mbmod.glac_bin_refreeze
+                            output_glac_bin_refreeze_monthly = output_glac_bin_refreeze_monthly_sim[:,:,np.newaxis]
+                            # melt
+                            output_glac_bin_melt_monthly_sim = np.zeros(mbmod.glac_bin_melt.shape)
+                            output_glac_bin_melt_monthly_sim =  mbmod.glac_bin_melt
+                            output_glac_bin_melt_monthly = output_glac_bin_melt_monthly_sim[:,:,np.newaxis]
+
                         else:
                             # Update the latest thickness and volume
+                            output_glac_bin_area_annual_sim = mbmod.glac_bin_area_annual[:,:,np.newaxis]
                             output_glac_bin_mass_annual_sim = (mbmod.glac_bin_area_annual *
                                                                  mbmod.glac_bin_icethickness_annual * 
                                                                  pygem_prms.density_ice)[:,:,np.newaxis]
@@ -1009,6 +1025,8 @@ def main(list_packed_vars):
                                 # mass
                                 glacier_vol_t0 = fl_widths_m * fl_dx_meter * icethickness_t0
                                 output_glac_bin_mass_annual_sim[:,-1,0] = glacier_vol_t0  * pygem_prms.density_ice
+                            output_glac_bin_area_annual = np.append(output_glac_bin_area_annual,
+                                                                      output_glac_bin_area_annual_sim, axis=2)
                             output_glac_bin_mass_annual = np.append(output_glac_bin_mass_annual,
                                                                       output_glac_bin_mass_annual_sim, axis=2)
                             output_glac_bin_icethickness_annual = np.append(output_glac_bin_icethickness_annual, 
@@ -1023,6 +1041,24 @@ def main(list_packed_vars):
                             output_glac_bin_massbalclim_monthly_sim =  mbmod.glac_bin_massbalclim
                             output_glac_bin_massbalclim_monthly = np.append(output_glac_bin_massbalclim_monthly, 
                                                                             output_glac_bin_massbalclim_monthly_sim[:,:,np.newaxis],
+                                                                            axis=2)
+                            # accum
+                            output_glac_bin_acc_monthly_sim = np.zeros(mbmod.bin_acc.shape)
+                            output_glac_bin_acc_monthly_sim =  mbmod.bin_acc
+                            output_glac_bin_acc_monthly = np.append(output_glac_bin_acc_monthly, 
+                                                                            output_glac_bin_acc_monthly_sim[:,:,np.newaxis],
+                                                                            axis=2)
+                            # melt
+                            output_glac_bin_melt_monthly_sim = np.zeros(mbmod.glac_bin_melt.shape)
+                            output_glac_bin_melt_monthly_sim =  mbmod.glac_bin_melt
+                            output_glac_bin_melt_monthly = np.append(output_glac_bin_melt_monthly, 
+                                                                            output_glac_bin_melt_monthly_sim[:,:,np.newaxis],
+                                                                            axis=2)
+                            # refreeze
+                            output_glac_bin_refreeze_monthly_sim = np.zeros(mbmod.glac_bin_refreeze.shape)
+                            output_glac_bin_refreeze_monthly_sim =  mbmod.glac_bin_refreeze
+                            output_glac_bin_refreeze_monthly = np.append(output_glac_bin_refreeze_monthly, 
+                                                                            output_glac_bin_refreeze_monthly_sim[:,:,np.newaxis],
                                                                             axis=2)
 
                 # ===== Export Results =====
@@ -1190,6 +1226,7 @@ def main(list_packed_vars):
                                                     dates_table=dates_table,
                                                     sim_iters=1,
                                                     nbins = surface_h_initial.shape[0],
+                                                    binned_components = pygem_prms.export_binned_components,
                                                     pygem_version=pygem.__version__,
                                                     gcm_name = gcm_name,
                                                     scenario = scenario,
@@ -1208,10 +1245,15 @@ def main(list_packed_vars):
                                 # fill values
                                 output_ds_binned_stats['bin_distance'].values[0,:] = output_glac_bin_dist
                                 output_ds_binned_stats['bin_surface_h_initial'].values[0,:] = surface_h_initial
+                                output_ds_binned_stats['bin_area_annual'].values[0,:,:] = output_glac_bin_area_annual[:,:,n_iter]
                                 output_ds_binned_stats['bin_mass_annual'].values[0,:,:] = output_glac_bin_mass_annual[:,:,n_iter]
                                 output_ds_binned_stats['bin_thick_annual'].values[0,:,:] = output_glac_bin_icethickness_annual[:,:,n_iter]
                                 output_ds_binned_stats['bin_massbalclim_annual'].values[0,:,:] = output_glac_bin_massbalclim_annual[:,:,n_iter]
                                 output_ds_binned_stats['bin_massbalclim_monthly'].values[0,:,:] = output_glac_bin_massbalclim_monthly[:,:,n_iter]
+                                if pygem_prms.export_binned_components:
+                                    output_ds_binned_stats['bin_accumulation_monthly'].values[0,:,:] = output_glac_bin_acc_monthly[:,:,n_iter]
+                                    output_ds_binned_stats['bin_melt_monthly'].values[0,:,:] = output_glac_bin_melt_monthly[:,:,n_iter]
+                                    output_ds_binned_stats['bin_refreeze_monthly'].values[0,:,:] = output_glac_bin_refreeze_monthly[:,:,n_iter]
 
                                 # export binned stats for iteration
                                 output_binned.save_xr_ds(output_binned.get_fn().replace('SETS',f'set{n_iter}') + 'binned.nc')
@@ -1221,6 +1263,7 @@ def main(list_packed_vars):
                                                 dates_table=dates_table,
                                                 sim_iters=sim_iters,
                                                 nbins = surface_h_initial.shape[0],
+                                                binned_components = pygem_prms.export_binned_components,
                                                 pygem_version=pygem.__version__,
                                                 gcm_name = gcm_name,
                                                 scenario = scenario,
@@ -1236,6 +1279,8 @@ def main(list_packed_vars):
                         # populate dataset with stats from each variable of interest
                         output_ds_binned_stats['bin_distance'].values = output_glac_bin_dist[np.newaxis, :]
                         output_ds_binned_stats['bin_surface_h_initial'].values = surface_h_initial[np.newaxis, :]
+                        output_ds_binned_stats['bin_area_annual'].values = (
+                                np.median(output_glac_bin_area_annual, axis=2)[np.newaxis,:,:])
                         output_ds_binned_stats['bin_mass_annual'].values = (
                                 np.median(output_glac_bin_mass_annual, axis=2)[np.newaxis,:,:])
                         output_ds_binned_stats['bin_thick_annual'].values = (
@@ -1244,6 +1289,13 @@ def main(list_packed_vars):
                                 np.median(output_glac_bin_massbalclim_annual, axis=2)[np.newaxis,:,:])
                         output_ds_binned_stats['bin_massbalclim_monthly'].values = (
                                 np.median(output_glac_bin_massbalclim_monthly, axis=2)[np.newaxis,:,:])
+                        if pygem_prms.export_binned_components:
+                            output_ds_binned_stats['bin_accumulation_monthly'].values = (
+                                    np.median(output_glac_bin_acc_monthly, axis=2)[np.newaxis,:,:])
+                            output_ds_binned_stats['bin_melt_monthly'].values = (
+                                    np.median(output_glac_bin_melt_monthly, axis=2)[np.newaxis,:,:])
+                            output_ds_binned_stats['bin_refreeze_monthly'].values = (
+                                    np.median(output_glac_bin_refreeze_monthly, axis=2)[np.newaxis,:,:])
                         if pygem_prms.sim_iters > 1:
                             output_ds_binned_stats['bin_mass_annual_mad'].values = (
                                 median_abs_deviation(output_glac_bin_mass_annual, axis=2)[np.newaxis,:,:])
