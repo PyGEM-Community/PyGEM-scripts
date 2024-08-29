@@ -205,7 +205,7 @@ def main(reg, simpath, gcm, scenario, bias_adj, gcm_startyear, gcm_endyear, vars
                         glac_melt_monthly = ds_glac.glac_melt_monthly.values
                         glac_refreeze_monthly = ds_glac.glac_refreeze_monthly.values
                         glac_frontalablation_monthly = ds_glac.glac_frontalablation_monthly.values
-                        glac_massbaltotal_monthly = ds_glac.glac_massbaltotal_monthly.values  * pygem_prms.density_ice
+                        glac_massbaltotal_monthly = ds_glac.glac_massbaltotal_monthly.values
                         glac_prec_monthly = ds_glac.glac_prec_monthly.values
                         glac_mass_monthly = ds_glac.glac_mass_monthly.values
                     except:
